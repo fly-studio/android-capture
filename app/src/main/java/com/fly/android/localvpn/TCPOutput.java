@@ -84,6 +84,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
                 String ipAndPort = currentPacket.getKey();
                 TCB tcb = TCB.getTCB(ipAndPort);
+
                 if (tcb == null) // 握手1
                     initializeConnection(ipAndPort, destinationAddress, destinationPort,
                             currentPacket, tcpHeader, responseBuffer);
@@ -99,6 +100,7 @@ public class TCPOutput extends TcpIO implements Runnable
                 // XXX: cleanup later
                 if (responseBuffer.position() == 0)
                     ByteBufferPool.release(responseBuffer);
+
                 ByteBufferPool.release(payloadBuffer);
             }
         }
@@ -271,26 +273,17 @@ public class TCPOutput extends TcpIO implements Runnable
                 tcb.waitingForNetworkData = true;
             }
 
-            // TODO: We don't expect out-of-order packets, but verify
-            // 回復給客戶端收到哪個ACK
-            tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
-            tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
-            Packet referencePacket = tcb.referencePacket;
-            referencePacket.generateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-            outputQueue.offer(responseBuffer);
-
             // 筛选数据，经过处理了之后再次转发
             // Forward to sendToRemote server
             try
             {
                 LinkedList<ByteBuffer> byteBuffers = tcb.filter(payloadBuffer);
-                if (byteBuffers == null)
-                    return;
-
-                ByteBuffer buff;
-                while ((buff = byteBuffers.poll()) != null)
-                    sendToRemote(tcb, buff);
-
+                if (byteBuffers != null)
+                {
+                    ByteBuffer buff;
+                    while ((buff = byteBuffers.poll()) != null)
+                        sendToRemote(tcb, buff);
+                }
             }
             catch (IOException e)
             {
@@ -303,7 +296,22 @@ public class TCPOutput extends TcpIO implements Runnable
                 Log.e(TAG, e.getMessage(), e);
             }
 
+            // TODO: We don't expect out-of-order packets, but verify
+            // 回復給客戶端收到哪個ACK
+            tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+            tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+            Packet referencePacket = tcb.referencePacket;
+            referencePacket.generateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+            outputQueue.offer(responseBuffer);
+
+            // response before send to remote
+            LinkedList<ByteBuffer> byteBuffers = tcb.getResponse();
+            ByteBuffer buff;
+            while ((buff = byteBuffers.poll()) != null)
+                sendToClient(tcb, buff);
+
         }
+
     }
 
     private void sendRST(TCB tcb, int prevPayloadSize, ByteBuffer buffer)
@@ -318,6 +326,5 @@ public class TCPOutput extends TcpIO implements Runnable
         ByteBufferPool.release(buffer);
         TCB.closeTCB(tcb);
     }
-
 
 }

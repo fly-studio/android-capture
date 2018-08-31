@@ -1,16 +1,23 @@
 package com.fly.android.localvpn;
 
-import com.fly.protocol.cache.ByteBufferPool;
+import android.util.Log;
+
 import com.fly.protocol.Protocol;
+import com.fly.protocol.cache.ByteBufferPool;
 import com.fly.protocol.exception.RequestException;
+import com.fly.protocol.exception.ResponseException;
 import com.fly.protocol.http.request.Request;
+import com.fly.protocol.http.response.Response;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.LinkedList;
 
 public class Firewall {
+
+    private static final String TAG = Firewall.class.getSimpleName();
 
     private TCB tcb;
 
@@ -21,6 +28,7 @@ public class Firewall {
     }
 
     private LinkedList<ByteBuffer> cache = new LinkedList<>();
+    private LinkedList<ByteBuffer> response = new LinkedList<>();
 
     private Status status = Status.INCOMPLETE;
     private Request httpRequest = null;
@@ -44,6 +52,10 @@ public class Firewall {
         return cache;
     }
 
+    public LinkedList<ByteBuffer> getResponse() {
+        return response;
+    }
+
     public void clear()
     {
         ByteBuffer buffer;
@@ -60,13 +72,15 @@ public class Firewall {
         ByteBuffer buffer = ByteBufferPool.acquire();
 
         while (byteBuffer.hasRemaining())
+        {
             buffer.put(byteBuffer);
+        }
 
         buffer.flip();
 
-        cache.add(buffer);
+        cache.add(buffer.duplicate());
 
-        update(buffer);
+        update(buffer.duplicate());
     }
 
     private String cacheToString()
@@ -74,7 +88,7 @@ public class Firewall {
         StringBuilder stringBuilder = new StringBuilder();
         for (ByteBuffer buffer : cache
                 )
-            stringBuilder.append(StandardCharsets.US_ASCII.decode(buffer));
+            stringBuilder.append(StandardCharsets.US_ASCII.decode(buffer.duplicate()));
 
         return stringBuilder.toString();
     }
@@ -104,34 +118,61 @@ public class Firewall {
             // 依次写入
             httpRequest.write(buffer.duplicate());
 
+            boolean hijack = false;
+
             if (httpRequest.isHeaderComplete())
             {
                 String url = httpRequest.getUrl();
 
-                System.out.println(url);
-
-                if (url.matches("xxx"))
+                if (url.matches(".*?(xtool\\.23ox\\.cn/api/xtools/x008/status).*?"))
                 {
+                    hijack = true;
                     status = Status.DROP;
                 } else
                     status = Status.ACCEPT;
             }
 
-            // 包体结束
+            // 包体结束, 清除httpRequest等待通道复用
             if (httpRequest.isBodyComplete())
             {
+                String url = httpRequest.getUrl();
+
+                Log.d(TAG, httpRequest.getMethod() + ": " + url);
+
+                if (hijack)
+                {
+
+                    String id = httpRequest.input("id");
+
+                    if (id != null && !id.isEmpty())
+                    {
+                        Response res = Response.newFixedLengthResponse("{" +
+                                "\"id\": \"" + id + "\"," +
+                                "\"time\": \"" + (new Date().getTime() + 200 * 365 *  86400_000L) + "\"," +
+                                "\"userName\": \"" + id + "\"," +
+                                "}");
+                        ByteBuffer byteBuffer = ByteBufferPool.acquire();
+                        res.send(byteBuffer);
+
+                        response.add(byteBuffer);
+                    }
+
+
+                }
+
                 httpRequest = null;
             }
 
-        } catch (IOException | RequestException e)
+        }
+        catch (IOException | RequestException | ResponseException e)
         {
             protocol = Protocol.OTHER;
             status = Status.ACCEPT;
-            e.printStackTrace();
-            return;
+
+            httpRequest = null;
+
+            Log.e(TAG,  e.getMessage(), e);
         }
-
-
 
     }
 }

@@ -247,10 +247,10 @@ public class LocalVPNService extends VpnService
                     if (bufferFromNetwork != null)
                     {
                         bufferFromNetwork.flip();
-                        System.out.println(new String(bufferFromNetwork.duplicate().array()).substring(0, bufferFromNetwork.limit()));
 
                         while (bufferFromNetwork.hasRemaining())
                             vpnOutput.write(bufferFromNetwork);
+
                         dataReceived = true;
 
                         ByteBufferPool.release(bufferFromNetwork);

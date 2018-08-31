@@ -34,12 +34,16 @@ package com.fly.protocol.http.response;
  */
 
 import com.fly.core.io.IOUtils;
+import com.fly.protocol.exception.ResponseException;
 import com.fly.protocol.http.Constant;
 import com.fly.protocol.http.content.ContentType;
 import com.fly.protocol.http.request.Method;
+import com.fly.protocol.http.tempfiles.DefaultTempFileManagerFactory;
+import com.fly.protocol.http.tempfiles.ITempFileManager;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +51,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.text.SimpleDateFormat;
@@ -81,6 +86,8 @@ public class Response implements Closeable {
     private InputStream data;
 
     private long contentLength;
+
+    private ITempFileManager tempFileManager = new DefaultTempFileManagerFactory().create();
 
     /**
      * Headers for the HTTP sendToClient. Use addHeader() to add lines. the
@@ -220,6 +227,23 @@ public class Response implements Closeable {
 
     public void setKeepAlive(boolean useKeepAlive) {
         this.keepAlive = useKeepAlive;
+    }
+
+    /**
+     * Short content Response
+     *
+     * @param byteBuffer
+     * @throws IOException
+     */
+    public void send(ByteBuffer byteBuffer) throws IOException, ResponseException
+    {
+        if (contentLength == -1 || contentLength > byteBuffer.remaining())
+            throw new ResponseException(Status.PAYLOAD_TOO_LARGE, "The response had a large body, or was chunked. Please use a OutStream instead of this");
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        send(outputStream);
+
+        byteBuffer.put(outputStream.toByteArray());
     }
 
     /**

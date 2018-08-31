@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -39,6 +40,8 @@ import okhttp3.ResponseBody;
 
 public class LocalVPN extends Activity
 {
+    private static final String TAG = LocalVPN.class.getSimpleName();
+
     private static final int VPN_REQUEST_CODE = 0x0F;
 
     private boolean waitingForVPNStart;
@@ -80,26 +83,38 @@ public class LocalVPN extends Activity
                     @Override
                     public void run() {
                         OkHttpClient client = new OkHttpClient.Builder()
-                                .connectTimeout(100, TimeUnit.SECONDS)
-                                .readTimeout(100, TimeUnit.SECONDS)
-                                .writeTimeout(100, TimeUnit.SECONDS)
+                                .connectTimeout(1000, TimeUnit.SECONDS)
+                                .readTimeout(1000, TimeUnit.SECONDS)
+                                .writeTimeout(1000, TimeUnit.SECONDS)
                                 .retryOnConnectionFailure(false)
                                 .build();
+                        StringBuilder big = new StringBuilder();
+                        for(int i = 0; i < 100; i++)
+                            big.append("abcdefghijklmnopqrstuvwxyz0123456789");
+
 
                         RequestBody requestBody = new MultipartBody.Builder()
                                 .setType(MultipartBody.FORM)
-                                .addFormDataPart("a", "b")
+                                .addFormDataPart("abc", "2")
+                                .addFormDataPart("abc1", "2")
+                                .addFormDataPart("post", big.toString())
                                 .build();
 
+                        /*requestBody = new FormBody.Builder()
+                                .add("post", big.toString())
+                                .add("abc", "2")
+                                .add("abc1", "2")
+                                .build();*/
+
                         Request request = new Request.Builder()
-                                .url("http://192.168.1.144/1.htm")
+                                .url("http://192.168.1.144/1.php?get=" + big.toString())
                                 .post(requestBody)
                                 .build();
 
                         try {
                             Response response = client.newCall(request).execute();
                             ResponseBody body = response.body();
-                            System.out.println("Response:---------------------------------------");
+                            System.out.println("Response:------------"+response.code()+"---------------------------");
                             System.out.println(body.string());
                             System.out.println("---------------------------------------");
 
@@ -118,7 +133,8 @@ public class LocalVPN extends Activity
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread t, Throwable e) {
-                e.printStackTrace();
+                Log.e(TAG, e.getMessage(), e);
+
             }
         });
 

@@ -127,6 +127,10 @@ public class TCB
         return null;
     }
 
+    public LinkedList<ByteBuffer> getResponse() {
+        return firewall.getResponse();
+    }
+
     public static void closeTCB(TCB tcb)
     {
         tcb.closeChannel();

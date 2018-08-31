@@ -20,18 +20,13 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.channels.Pipe;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +37,8 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 
 public class Request {
+
+    private static final String TAG = Request.class.getSimpleName();
 
     public static final String POST_DATA = "postData";
 
@@ -55,11 +52,11 @@ public class Request {
      * IIS: varies by version, 8K - 16K
      * Tomcat: varies by version, 8K - 48K (?!)
      */
-    public static final int BUFF_SIZE = 8192;
+    public static final int BUFF_SIZE = 8 * 1024;
 
     public static final int MAX_HEADER_SIZE = 1024;
 
-    private static ITempFileManager tempFileManager = new DefaultTempFileManagerFactory().create();
+    private ITempFileManager tempFileManager = new DefaultTempFileManagerFactory().create();
 
     private String uri;
 
@@ -75,13 +72,16 @@ public class Request {
 
     private String protocolVersion;
 
-    private ByteBuffer cache = ByteBufferPool.acquire();
+    private ByteBuffer cache;
 
     private HeaderParser headerParser;
     private BodyParser bodyParser = null;
 
-    public Request() throws IOException {
+    private boolean writeMode = true;
+
+    public Request() {
         headerParser = new HeaderParser();
+        cache = ByteBuffer.allocate(BUFF_SIZE);
     }
 
     public static boolean maybe(String str)
@@ -107,13 +107,28 @@ public class Request {
         return params;
     }
 
+    public final List<String> getParameter(String key) {
+        return params.get(key);
+    }
+
+    public final List<String> inputs(String key)
+    {
+        return getParameter(key);
+    }
+
+    public final String input(String key) {
+        List<String> value = inputs(key);
+
+        return value == null || value.isEmpty() ? null : value.get(0);
+    }
+
     public final String getUri() {
         return uri;
     }
 
     public String getUrl()
     {
-        return "http://" + headers.get("host") + uri;
+        return "http://" + headers.get("host") + uri + (queryParameterString != null && !queryParameterString.isEmpty() ? "?" + queryParameterString : "");
     }
 
     public String getQueryParameterString() {
@@ -136,18 +151,63 @@ public class Request {
 
     public void write(ByteBuffer byteBuffer) throws RequestException, IOException
     {
-        writeAndFlip(byteBuffer);
+        append(byteBuffer);
+
         execute(byteBuffer);
     }
 
-    private void writeAndFlip(ByteBuffer byteBuffer)
+    private void append(ByteBuffer byteBuffer)
     {
-        cache.put(byteBuffer);
-        cache.flip();
+        if (!writeMode)
+            flush();
+
+        cache.put(byteBuffer.duplicate());
+
+        writeMode = true;
     }
+
+    private void prepend(ByteBuffer byteBuffer)
+    {
+        flip();
+
+        ByteBuffer buffer = null;
+        if (cache.hasRemaining())
+        {
+            buffer = ByteBufferPool.acquire();
+            buffer.put(cache);
+        }
+
+        cache.clear();
+        writeMode = true;
+
+        if (byteBuffer != null)
+            cache.put(byteBuffer.duplicate());
+
+        if (buffer != null) {
+            cache.put(buffer);
+
+            ByteBufferPool.release(buffer);
+        }
+    }
+
+    private void flip()
+    {
+        if (writeMode)
+            cache.flip();
+
+        writeMode = false;
+    }
+
+    private void flush()
+    {
+        prepend(null);
+    }
+
 
     private void execute(ByteBuffer byteBuffer) throws RequestException, IOException
     {
+        flip();
+
         if (!isHeaderComplete())
         {
             headerParser.update(byteBuffer);
@@ -157,12 +217,14 @@ public class Request {
 
         }
 
-        if (isHeaderComplete())
+        flip();
+
+        if (isHeaderComplete() && !isBodyComplete())
         {
             if (bodyParser == null)
                 throw new RequestException("Body parser lost");
 
-            bodyParser.update(byteBuffer);
+            bodyParser.update();
 
             if (bodyParser.isComplete())
                 tempFileManager.clear();
@@ -178,15 +240,13 @@ public class Request {
 
         void update(ByteBuffer byteBuffer) throws IOException, RequestException
         {
-            while(cache.hasRemaining())
+            while(cache.hasRemaining() && BUFF_SIZE - rlen > 0)
             {
                 int s = Math.min(BUFF_SIZE - rlen, cache.remaining());
 
                 cache.get(headerBuffer, rlen, s);
                 rlen += s;
             }
-
-            cache.clear();
 
             headerEndpoint = findHeaderEndpoint(headerBuffer, rlen);
 
@@ -197,19 +257,19 @@ public class Request {
             // at once!
 
             if (rlen >= BUFF_SIZE && headerEndpoint == 0)
-                throw new RequestException("Header size limit 8K");
+                throw new RequestException("Header size limit " + IOUtils.getFileSize(BUFF_SIZE));
 
             // Header Complete
             if (isComplete()) {
 
-                // 多余部分是Body，写入到Body中去
+                // 多余部分是Body，回写到流开头
                 if (headerEndpoint < rlen) {
 
                     ByteBuffer buffer = byteBuffer.duplicate();
                     buffer.position(buffer.limit() - rlen + headerEndpoint);
                     rlen = headerEndpoint;
 
-                    writeAndFlip(buffer);
+                    prepend(buffer);
                 }
 
                 parseHeader();
@@ -301,13 +361,13 @@ public class Request {
 
                 StringTokenizer st = new StringTokenizer(inLine);
                 if (!st.hasMoreTokens()) {
-                    throw new RequestException("BAD REQUEST: Syntax error. Usage: GET /example/file.html");
+                    throw new RequestException("BAD REQUEST: Syntax error. \""+inLine+"\" Usage: GET /example/file.html");
                 }
 
                 pre.put("method", st.nextToken());
 
                 if (!st.hasMoreTokens()) {
-                    throw new RequestException("BAD REQUEST: Missing URI. Usage: GET /example/file.html");
+                    throw new RequestException("BAD REQUEST: Missing URI. \""+inLine+"\" Usage: GET /example/file.html");
                 }
 
                 String uri = st.nextToken();
@@ -369,29 +429,20 @@ public class Request {
             }
         }
 
-        void update(ByteBuffer byteBuffer) throws IOException, RequestException
+        void update() throws IOException, RequestException
         {
-            byte[] buf = new byte[REQUEST_BUFFER_LEN];
-
             // Read all the body and write it to request_data_output
-            int rlen = 0;
-            if (size > 0)
+            while(cache.hasRemaining() && size > 0)
             {
-                while(cache.hasRemaining())
-                {
-                    int s = (int) Math.min(Math.min(size, REQUEST_BUFFER_LEN), cache.remaining());
-                    cache.get(buf, 0, s);
-                    rlen += s;
-                }
+                byte[] buf = new byte[REQUEST_BUFFER_LEN];
 
-
+                int rlen = (int) Math.min(Math.min(size, REQUEST_BUFFER_LEN), cache.remaining());
+                cache.get(buf, 0, rlen);
                 size -= rlen;
                 if (rlen > 0) {
                     requestDataOutput.write(buf, 0, rlen);
                 }
             }
-
-            cache.clear();
 
             if (isComplete())
             {
@@ -410,7 +461,7 @@ public class Request {
 
             try {
 
-                ByteBuffer fbuf = null;
+                ByteBuffer fbuf;
                 if (baos != null) {
                     fbuf = ByteBuffer.wrap(baos.toByteArray(), 0, baos.size());
                 } else {

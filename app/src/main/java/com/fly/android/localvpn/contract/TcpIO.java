@@ -1,8 +1,8 @@
 package com.fly.android.localvpn.contract;
 
-import com.fly.protocol.cache.ByteBufferPool;
 import com.fly.android.localvpn.Packet;
 import com.fly.android.localvpn.TCB;
+import com.fly.protocol.cache.ByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,8 +27,9 @@ public abstract class TcpIO {
     public void sendToRemote(TCB tcb, ByteBuffer remoteBuffer) throws IOException
     {
         // 轉發數據給remote
-        while (remoteBuffer.hasRemaining())
+        while (remoteBuffer.hasRemaining()) {
             tcb.channel.write(remoteBuffer);
+        }
     }
 
     /**

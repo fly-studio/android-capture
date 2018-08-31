@@ -33,12 +33,12 @@ package com.fly.protocol.http.content;
  * #L%
  */
 
+import com.fly.protocol.http.response.Response;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
-import com.fly.protocol.http.response.Response;
 
 /**
  * Provides rudimentary support for cookies. Doesn't support 'path', 'secure'
