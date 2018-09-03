@@ -26,16 +26,27 @@ public class ByteBufferPool
 
     public static ByteBuffer acquire()
     {
-        ByteBuffer buffer = pool.poll();
-        if (buffer == null)
-            buffer = ByteBuffer.allocateDirect(BUFFER_SIZE); // Using DirectBuffer for zero-copy
-        return buffer;
+        synchronized(ByteBufferPool.class)
+        {
+            ByteBuffer buffer;
+            // 预先分配10个
+            if (pool.isEmpty()) {
+                for (int i = 0; i < 10; i++) {
+                    buffer = ByteBuffer.allocateDirect(BUFFER_SIZE); // Using DirectBuffer for zero-copy
+                    pool.offer(buffer);
+                }
+            }
+
+            return pool.poll();
+        }
     }
 
+    // 让GC处理吧，就目前来说，代码中释放的逻辑可能有问题
+    // 某一些ByteBuffer不正确的释放导致数据被复写,
     public static void release(ByteBuffer buffer)
     {
-        buffer.clear();
-        pool.offer(buffer);
+        //buffer.clear();
+        //pool.offer(buffer);
     }
 
     public static void clear()

@@ -156,9 +156,15 @@ public class Packet
             outBuffer.put(inBuffer.array(), getDataOffset(), getDataSize());
     }
 
+    public void generateTCPBuffer(ByteBuffer buffer, byte flags, TCB tcb, int payloadSize)
+    {
+        generateTCPBuffer(buffer, flags, tcb.mySequenceNum, tcb.myAcknowledgementNum, payloadSize);
+    }
+
     public void generateTCPBuffer(ByteBuffer buffer, byte flags, long sequenceNum, long ackNum, int payloadSize)
     {
         buffer.position(0);
+
         fillHeader(buffer);
         backingBuffer = buffer;
 

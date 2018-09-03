@@ -26,6 +26,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Transmission Control Block
@@ -91,6 +92,21 @@ public class TCB
     }
 
     public TCB(String ipAndPort,
+               Packet.TCPHeader tcpHeader,
+               SocketChannel channel,
+               Packet referencePacket
+               )
+    {
+        this(ipAndPort,
+                new Random().nextInt(Short.MAX_VALUE + 1),
+                tcpHeader.sequenceNumber,
+                tcpHeader.sequenceNumber + 1,
+                tcpHeader.acknowledgementNumber,
+                channel,
+                referencePacket);
+    }
+
+    public TCB(String ipAndPort,
                long mySequenceNum,
                long theirSequenceNum,
                long myAcknowledgementNum,
@@ -107,6 +123,35 @@ public class TCB
 
         this.channel = channel;
         this.referencePacket = referencePacket;
+    }
+
+    public void incrementReplyAck(Packet.TCPHeader tcpHeader, int payloadSize)
+    {
+        myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
+        theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+    }
+
+    public void incrementReplyAck(Packet.TCPHeader tcpHeader)
+    {
+        incrementReplyAck(tcpHeader, 1);
+    }
+
+    public void incrementSeq(int size)
+    {
+        mySequenceNum += size;
+
+        if (mySequenceNum > 0xffffffffL) // 2 ** 32 - 1
+            mySequenceNum %= 0x100000000L; // 2 ** 32
+    }
+
+    public int getRemainSeq()
+    {
+        return (int)(0xffffffffL - mySequenceNum);
+    }
+
+    public void incrementSeq()
+    {
+        incrementSeq(1);
     }
 
     public void setTcpIO(TcpIO tcpIO) {

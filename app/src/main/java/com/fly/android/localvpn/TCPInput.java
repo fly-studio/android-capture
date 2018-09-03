@@ -98,10 +98,11 @@ public class TCPInput extends TcpIO implements Runnable
                 // TODO: Set MSS for receiving larger packets from the device
                 ByteBuffer responseBuffer = ByteBufferPool.acquire();
                 referencePacket.generateTCPBuffer(responseBuffer, (byte) (Packet.TCPHeader.SYN | Packet.TCPHeader.ACK),
-                        tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                        tcb, 0);
                 outputQueue.offer(responseBuffer);
 
-                tcb.mySequenceNum++; // SYN counts as a byte
+                tcb.incrementSeq();// SYN counts as a byte
+
                 key.interestOps(SelectionKey.OP_READ);
             }
         }
@@ -154,15 +155,19 @@ public class TCPInput extends TcpIO implements Runnable
                 }
 
                 tcb.status = TCBStatus.LAST_ACK;
-                referencePacket.generateTCPBuffer(receiveBuffer, (byte) Packet.TCPHeader.FIN, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                tcb.mySequenceNum++; // FIN counts as a byte
+                referencePacket.generateTCPBuffer(receiveBuffer, (byte) Packet.TCPHeader.FIN, tcb, 0);
+
+                tcb.incrementSeq(); // FIN counts as a byte
+
             }
             else
             {
                 // XXX: We should ideally be splitting segments by MTU/MSS, but this seems to work without
                 referencePacket.generateTCPBuffer(receiveBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
-                        tcb.mySequenceNum, tcb.myAcknowledgementNum, readBytes);
-                tcb.mySequenceNum += readBytes; // Next sequence number
+                        tcb, readBytes);
+
+                tcb.incrementSeq(readBytes);// Next sequence number
+
                 receiveBuffer.position(HEADER_SIZE + readBytes);
             }
         }

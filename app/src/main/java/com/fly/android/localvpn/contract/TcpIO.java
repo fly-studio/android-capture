@@ -50,15 +50,16 @@ public abstract class TcpIO {
         while ((readBytes = Math.min(replyBuffer.limit() - replyBuffer.position(), Packet.MUTE_SIZE - HEADER_SIZE)) > 0)
         {
             ByteBuffer segmentBuffer = ByteBufferPool.acquire();
+
             segmentBuffer.position(HEADER_SIZE);
             segmentBuffer.put(replyBuffer.array(), replyBuffer.position(), readBytes);
 
             referencePacket.generateTCPBuffer(segmentBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
-                    tcb.mySequenceNum, tcb.myAcknowledgementNum, readBytes);
+                    tcb, readBytes);
 
             replyBuffer.position(replyBuffer.position() + readBytes);
 
-            tcb.mySequenceNum += readBytes; // Next sequence number
+            tcb.incrementSeq(readBytes); // Next sequence number
             segmentBuffer.position(HEADER_SIZE + readBytes);
 
             outputQueue.offer(segmentBuffer);

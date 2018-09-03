@@ -31,7 +31,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
-import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class TCPOutput extends TcpIO implements Runnable
@@ -39,8 +38,6 @@ public class TCPOutput extends TcpIO implements Runnable
     private static final String TAG = TCPOutput.class.getSimpleName();
 
     private LocalVPNService vpnService;
-
-    private Random random = new Random();
 
     public TCPOutput(ConcurrentLinkedQueue<Packet> inputQueue, ConcurrentLinkedQueue<ByteBuffer> outputQueue,
                      Selector selector, LocalVPNService vpnService) throws IOException
@@ -88,7 +85,7 @@ public class TCPOutput extends TcpIO implements Runnable
                 if (tcb == null) // 握手1
                     initializeConnection(ipAndPort, destinationAddress, destinationPort,
                             currentPacket, tcpHeader, responseBuffer);
-                else if (tcpHeader.isSYN()) // 客戶端還在發SYN？
+                else if (tcpHeader.isSYN()) // 同步序列号
                     processDuplicateSYN(tcb, tcpHeader, responseBuffer);
                 else if (tcpHeader.isRST()) // 連接丟失
                     closeCleanly(tcb, responseBuffer);
@@ -131,10 +128,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
             TCB tcb = new TCB(
                     ipAndPort,
-                    random.nextInt(Short.MAX_VALUE + 1),
-                    tcpHeader.sequenceNumber,
-                    tcpHeader.sequenceNumber + 1,
-                    tcpHeader.acknowledgementNumber,
+                    tcpHeader,
                     outputChannel,
                     currentPacket);
             tcb.setTcpIO(this);
@@ -144,13 +138,16 @@ public class TCPOutput extends TcpIO implements Runnable
             try
             {
                 outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
+
+                //由于上面是异步的, 不可能这么快返回连接成功, 连接成功会触发selector的事件驱动
                 if (outputChannel.finishConnect())
                 {
                     tcb.status = TCBStatus.SYN_RECEIVED;
                     // TODO: Set MSS for receiving larger packets from the device
                     currentPacket.generateTCPBuffer(responseBuffer, (byte) (TCPHeader.SYN | TCPHeader.ACK),
-                            tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                    tcb.mySequenceNum++; // SYN counts as a byte
+                            tcb, 0);
+
+                    tcb.incrementSeq();// SYN counts as a byte
                 }
                 else
                 {
@@ -177,7 +174,9 @@ public class TCPOutput extends TcpIO implements Runnable
     }
 
     /**
-     * 客戶端重複發SYN，可能有問題
+     * 客戶端發SYN
+     * 如果在SYN_SENT状态下，则记录新的序列号
+     * 其它状态，表示有问题
      * @param tcb
      * @param tcpHeader
      * @param responseBuffer
@@ -206,23 +205,25 @@ public class TCPOutput extends TcpIO implements Runnable
         synchronized (tcb)
         {
             Packet referencePacket = tcb.referencePacket;
-            tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + 1; //服务器(VPN)收到这个FIN，它发回一个ACK，确认序号为收到的序号加1。
-            tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+
+            //服务器(VPN)收到这个FIN，它发回一个ACK，确认序号为收到的序号加1。
+            tcb.incrementReplyAck(tcpHeader);
 
             // 客戶端揮手1, 回復ACK
             if (tcb.waitingForNetworkData)
             {
                 tcb.status = TCBStatus.CLOSE_WAIT;
                 referencePacket.generateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK,
-                        tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+                        tcb, 0);
             }
-            // 客戶端揮手2+3,回復FIN+ACK
+            // 客戶端揮手2,3,回復FIN+ACK
             else
             {
                 tcb.status = TCBStatus.LAST_ACK;
                 referencePacket.generateTCPBuffer(responseBuffer, (byte) (TCPHeader.FIN | TCPHeader.ACK),
-                        tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
-                tcb.mySequenceNum++; // FIN counts as a byte
+                        tcb, 0);
+
+                tcb.incrementSeq(); // FIN counts as a byte
             }
         }
         outputQueue.offer(responseBuffer);
@@ -230,6 +231,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
     /**
      * ACK
+     * ACK + PSH
      *
      * @param tcb
      * @param tcpHeader
@@ -298,10 +300,10 @@ public class TCPOutput extends TcpIO implements Runnable
 
             // TODO: We don't expect out-of-order packets, but verify
             // 回復給客戶端收到哪個ACK
-            tcb.myAcknowledgementNum = tcpHeader.sequenceNumber + payloadSize;
-            tcb.theirAcknowledgementNum = tcpHeader.acknowledgementNumber;
+            tcb.incrementReplyAck(tcpHeader, payloadSize);
+
             Packet referencePacket = tcb.referencePacket;
-            referencePacket.generateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb.mySequenceNum, tcb.myAcknowledgementNum, 0);
+            referencePacket.generateTCPBuffer(responseBuffer, (byte) TCPHeader.ACK, tcb, 0);
             outputQueue.offer(responseBuffer);
 
             // response before send to remote
@@ -317,13 +319,14 @@ public class TCPOutput extends TcpIO implements Runnable
     private void sendRST(TCB tcb, int prevPayloadSize, ByteBuffer buffer)
     {
         tcb.referencePacket.generateTCPBuffer(buffer, (byte) TCPHeader.RST, 0, tcb.myAcknowledgementNum + prevPayloadSize, 0);
+
         outputQueue.offer(buffer);
         TCB.closeTCB(tcb);
     }
 
     private void closeCleanly(TCB tcb, ByteBuffer buffer)
     {
-        ByteBufferPool.release(buffer);
+        //ByteBufferPool.release(buffer);
         TCB.closeTCB(tcb);
     }
 
