@@ -1,7 +1,7 @@
 package org.fly.android.localvpn.store;
 
-import org.fly.android.localvpn.firewall.Firewall;
 import org.fly.android.localvpn.Packet;
+import org.fly.android.localvpn.firewall.Firewall;
 import org.fly.protocol.cache.LRUCache;
 
 import java.io.IOException;
