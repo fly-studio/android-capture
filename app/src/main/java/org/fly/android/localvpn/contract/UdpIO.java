@@ -1,49 +1,48 @@
-package com.fly.android.localvpn.contract;
+package org.fly.android.localvpn.contract;
 
-import com.fly.android.localvpn.Packet;
-import com.fly.android.localvpn.TCB;
-import com.fly.protocol.cache.ByteBufferPool;
+import org.fly.android.localvpn.Packet;
+import org.fly.android.localvpn.store.UDB;
+import org.fly.protocol.cache.ByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public abstract class TcpIO {
+public abstract class UdpIO {
 
-    protected static final int HEADER_SIZE = Packet.IP4_HEADER_SIZE + Packet.TCP_HEADER_SIZE;
-
-    protected ConcurrentLinkedQueue<Packet> inputQueue;
-    protected ConcurrentLinkedQueue<ByteBuffer> outputQueue;
+    protected static final int HEADER_SIZE = Packet.IP4_HEADER_SIZE + Packet.UDP_HEADER_SIZE;
     protected Selector selector;
+    protected ConcurrentLinkedQueue<ByteBuffer> outputQueue;
+    protected ConcurrentLinkedQueue<Packet> inputQueue;
 
     /**
      * 发送数据给远端
      *
-     * @param tcb
+     * @param udb
      * @param remoteBuffer
      * @throws IOException
      */
-    public void sendToRemote(TCB tcb, ByteBuffer remoteBuffer) throws IOException
+    public void sendToRemote(UDB udb, ByteBuffer remoteBuffer) throws IOException
     {
         // 轉發數據給remote
         while (remoteBuffer.hasRemaining()) {
-            tcb.channel.write(remoteBuffer);
+            udb.channel.write(remoteBuffer);
         }
     }
 
     /**
      * 回复本地客户端的数据
      *
-     * @param tcb
+     * @param udb
      * @param replyBuffer
      */
-    public void sendToClient(TCB tcb, ByteBuffer replyBuffer)
+    public void sendToClient(UDB udb, ByteBuffer replyBuffer)
     {
         replyBuffer.flip();
         replyBuffer.position(0);
 
-        Packet referencePacket = tcb.referencePacket;
+        Packet referencePacket = udb.referencePacket;
 
         int readBytes;
         //按照MTU分割
@@ -54,17 +53,15 @@ public abstract class TcpIO {
             segmentBuffer.position(HEADER_SIZE);
             segmentBuffer.put(replyBuffer.array(), replyBuffer.position(), readBytes);
 
-            referencePacket.generateTCPBuffer(segmentBuffer, (byte) (Packet.TCPHeader.PSH | Packet.TCPHeader.ACK),
-                    tcb, readBytes);
+            referencePacket.generateUDPBuffer(segmentBuffer, readBytes);
 
             replyBuffer.position(replyBuffer.position() + readBytes);
 
-            tcb.incrementSeq(readBytes); // Next sequence number
             segmentBuffer.position(HEADER_SIZE + readBytes);
 
             outputQueue.offer(segmentBuffer);
         }
 
-
     }
+
 }
