@@ -40,28 +40,25 @@ public abstract class UdpIO {
     public void sendToClient(UDB udb, ByteBuffer replyBuffer)
     {
         replyBuffer.flip();
-        replyBuffer.position(0);
-
         Packet referencePacket = udb.referencePacket;
 
         int readBytes;
         //按照MTU分割
-        while ((readBytes = Math.min(replyBuffer.limit() - replyBuffer.position(), Packet.MUTE_SIZE - HEADER_SIZE)) > 0)
+        while ((readBytes = Math.min(replyBuffer.remaining(), Packet.MUTE_SIZE - HEADER_SIZE)) > 0)
         {
             ByteBuffer segmentBuffer = ByteBufferPool.acquire();
 
             segmentBuffer.position(HEADER_SIZE);
-            segmentBuffer.put(replyBuffer.array(), replyBuffer.position(), readBytes);
+
+            byte[] bytes = new byte[readBytes];
+            replyBuffer.get(bytes);
+            segmentBuffer.put(bytes);
 
             referencePacket.generateUDPBuffer(segmentBuffer, readBytes);
-
-            replyBuffer.position(replyBuffer.position() + readBytes);
 
             segmentBuffer.position(HEADER_SIZE + readBytes);
 
             outputQueue.offer(segmentBuffer);
         }
-
     }
-
 }

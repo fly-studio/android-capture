@@ -21,6 +21,8 @@ import android.util.Log;
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
 import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.protocol.dns.content.Dns;
+import org.fly.protocol.dns.response.Response;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,8 +36,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class UDPInput extends UdpIO implements Runnable
 {
     private static final String TAG = UDPInput.class.getSimpleName();
-
-
 
     public UDPInput(ConcurrentLinkedQueue<ByteBuffer> outputQueue, Selector selector)
     {
@@ -76,7 +76,14 @@ public class UDPInput extends UdpIO implements Runnable
                         DatagramChannel inputChannel = (DatagramChannel) key.channel();
                         // XXX: We should handle any IOExceptions here immediately,
                         // but that probably won't happen with UDP
-                        int readBytes = inputChannel.read(receiveBuffer);
+                        //int readBytes = inputChannel.read(receiveBuffer);
+
+                        ByteBuffer buffer = ByteBufferPool.acquire();
+                        int readBytes = inputChannel.read(buffer);
+                        buffer.flip();
+
+                        receiveBuffer.put(buffer);
+                        ByteBufferPool.release(buffer);
 
                         Packet referencePacket = udb.referencePacket;
                         referencePacket.generateUDPBuffer(receiveBuffer, readBytes);

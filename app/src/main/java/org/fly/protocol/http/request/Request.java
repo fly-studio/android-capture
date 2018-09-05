@@ -84,17 +84,6 @@ public class Request {
         cache = ByteBuffer.allocate(BUFF_SIZE);
     }
 
-    public static boolean maybe(String str)
-    {
-        if (!str.contains(" "))
-            return false;
-
-        String[] startLine = str.split("\\s+");
-
-        //因为网址可能会比较长，所以只检查了Method 和 网址的关键字
-        return Method.lookup(startLine[0]) != null && (startLine[1].startsWith("/") || startLine[1].contains("://"));
-    }
-
     public final Map<String, String> getHeaders() {
         return headers;
     }

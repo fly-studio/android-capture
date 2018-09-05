@@ -6,6 +6,7 @@ import org.fly.android.localvpn.contract.IFirewall;
 import org.fly.protocol.cache.ByteBufferPool;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.exception.ResponseException;
+import org.fly.protocol.http.request.Method;
 import org.fly.protocol.http.request.Request;
 import org.fly.protocol.http.response.Response;
 
@@ -29,7 +30,14 @@ public class Http implements IFirewall {
 
     public static boolean maybe(ByteBuffer byteBuffer)
     {
-        return Request.maybe(StandardCharsets.US_ASCII.decode(byteBuffer.duplicate()).toString());
+        String str = StandardCharsets.US_ASCII.decode(byteBuffer.duplicate()).toString();
+        if (!str.contains(" "))
+            return false;
+
+        String[] startLine = str.split("\\s+");
+
+        //因为网址可能会比较长，所以只检查了Method 和 网址的关键字
+        return Method.lookup(startLine[0]) != null && (startLine[1].startsWith("/") || startLine[1].contains("://"));
     }
 
     @Override
@@ -39,12 +47,13 @@ public class Http implements IFirewall {
 
         LinkedList<ByteBuffer> results = new LinkedList<>();
 
+        // 依次写入
         request.write(byteBuffer.duplicate());
 
-        // 依次写入
 
         boolean hijack = false;
 
+        //等待头完成
         if (request.isHeaderComplete())
         {
             String url = request.getUrl();

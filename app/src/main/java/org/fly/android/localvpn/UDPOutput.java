@@ -38,10 +38,13 @@ public class UDPOutput extends UdpIO implements Runnable
 
     private LocalVPNService vpnService;
 
-
-    public UDPOutput(ConcurrentLinkedQueue<Packet> inputQueue, Selector selector, LocalVPNService vpnService)
+    public UDPOutput(ConcurrentLinkedQueue<Packet> inputQueue,
+                     ConcurrentLinkedQueue<ByteBuffer> outputQueue,
+                     Selector selector,
+                     LocalVPNService vpnService)
     {
         this.inputQueue = inputQueue;
+        this.outputQueue = outputQueue;
         this.selector = selector;
         this.vpnService = vpnService;
     }
@@ -126,6 +129,13 @@ public class UDPOutput extends UdpIO implements Runnable
                 }
 
                 ByteBufferPool.release(currentPacket.backingBuffer);
+
+                // response before send to remote
+                LinkedList<ByteBuffer> byteBuffers = udb.getResponse();
+                ByteBuffer buff;
+                while ((buff = byteBuffers.poll()) != null)
+                    sendToClient(udb, buff);
+
             }
         }
         catch (InterruptedException e)
@@ -135,6 +145,10 @@ public class UDPOutput extends UdpIO implements Runnable
         catch (IOException e)
         {
             Log.i(TAG, e.toString(), e);
+        }
+        catch (Exception e)
+        {
+            Log.e(TAG, e.toString(), e);
         }
         finally
         {

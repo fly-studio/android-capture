@@ -73,7 +73,7 @@ public class LocalVPNService extends VpnService
 
             executorService = Executors.newFixedThreadPool(5);
             executorService.submit(new UDPInput(networkToDeviceQueue, udpSelector));
-            executorService.submit(new UDPOutput(deviceToNetworkUDPQueue, udpSelector, this));
+            executorService.submit(new UDPOutput(deviceToNetworkUDPQueue, networkToDeviceQueue, udpSelector, this));
             executorService.submit(new TCPInput(networkToDeviceQueue, tcpSelector));
             executorService.submit(new TCPOutput(deviceToNetworkTCPQueue, networkToDeviceQueue, tcpSelector, this));
             executorService.submit(new VPNRunnable(

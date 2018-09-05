@@ -145,19 +145,6 @@ public class Packet
         return ip4Header.totalLength - getDataOffset();
     }
 
-    public void getData(ByteBuffer outBuffer)
-    {
-        getData(outBuffer, backingBuffer);
-    }
-
-    public void getData(ByteBuffer outBuffer, ByteBuffer inBuffer)
-    {
-        outBuffer.clear();
-
-        if (null != inBuffer)
-            outBuffer.put(inBuffer.array(), getDataOffset(), getDataSize());
-    }
-
     public void generateTCPBuffer(ByteBuffer buffer, byte flags, TCB tcb, int payloadSize)
     {
         generateTCPBuffer(buffer, flags, tcb.mySequenceNum, tcb.myAcknowledgementNum, payloadSize);

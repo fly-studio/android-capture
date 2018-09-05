@@ -1,5 +1,7 @@
 package org.fly.protocol.exception;
 
+import android.annotation.TargetApi;
+
 public class RequestException extends Exception {
 
     public RequestException() {
@@ -17,6 +19,7 @@ public class RequestException extends Exception {
         super(cause);
     }
 
+    @TargetApi(24)
     public RequestException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
