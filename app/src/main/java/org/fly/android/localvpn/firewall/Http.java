@@ -87,7 +87,7 @@ public class Http implements IFirewall {
                     ByteBuffer buffer = ByteBufferPool.acquire();
                     response.send(buffer);
 
-                    results.add(byteBuffer);
+                    results.add(buffer);
                 }
 
             }

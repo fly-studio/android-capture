@@ -28,19 +28,19 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
-import java.util.concurrent.TimeUnit;
-
-import okhttp3.MultipartBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import org.fly.android.localvpn.firewall.Table;
 
 
 public class LocalVPN extends Activity
 {
     private static final String TAG = LocalVPN.class.getSimpleName();
+
+    public static final Table table;
+
+    static {
+        table = new Table();
+        table.tick();
+    }
 
     private static final int VPN_REQUEST_CODE = 0x0F;
 
@@ -79,54 +79,7 @@ public class LocalVPN extends Activity
             @Override
             public void onClick(View v)
             {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        OkHttpClient client = new OkHttpClient.Builder()
-                                .connectTimeout(1000, TimeUnit.SECONDS)
-                                .readTimeout(1000, TimeUnit.SECONDS)
-                                .writeTimeout(1000, TimeUnit.SECONDS)
-                                .retryOnConnectionFailure(false)
-                                .build();
-                        StringBuilder big = new StringBuilder();
-                        for(int i = 0; i < 100; i++)
-                            big.append("abcdefghijklmnopqrstuvwxyz0123456789");
 
-
-                        RequestBody requestBody = new MultipartBody.Builder()
-                                .setType(MultipartBody.FORM)
-                                .addFormDataPart("abc", "2")
-                                .addFormDataPart("abc1", "2")
-                                .addFormDataPart("post", big.toString())
-                                .build();
-
-                        /*requestBody = new FormBody.Builder()
-                                .add("post", big.toString())
-                                .add("abc", "2")
-                                .add("abc1", "2")
-                                .build();*/
-
-                        Request request = new Request.Builder()
-                                .url("http://192.168.1.144/1.php?get=" + big.toString())
-                                .post(requestBody)
-                                .build();
-
-                        try {
-                            Response response = client.newCall(request).execute();
-                            ResponseBody body = response.body();
-                            System.out.println("Response:------------"+response.code()+"---------------------------");
-                            System.out.println(body.string());
-                            System.out.println("---------------------------------------");
-
-                            body.close();
-                            response.close();
-                        }
-                        catch (Exception e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
             }
         });
 
