@@ -116,6 +116,7 @@ public class TCPOutput extends TcpIO implements Runnable
         }
         finally
         {
+            Log.d(TAG, "Close all tcb");
             TCB.closeAll();
         }
     }
@@ -141,6 +142,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
             try
             {
+                Log.d(TAG, "Connect: " + tcb.getIpAndPort());
 
                 outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
 
@@ -331,7 +333,8 @@ public class TCPOutput extends TcpIO implements Runnable
 
     private void closeCleanly(TCB tcb, ByteBuffer buffer)
     {
-        //ByteBufferPool.release(buffer);
+        ByteBufferPool.release(buffer);
+
         TCB.closeTCB(tcb);
     }
 

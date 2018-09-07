@@ -43,10 +43,8 @@ public class Dns implements IFirewall {
         {
             header.read(byteBuffer.duplicate());
 
-            if (!header.isQuery() || !header.isQueryDomain() || header.getQdCount() != 1)
-            {
+            if (!header.isQuery() /*|| !header.isQueryDomain() */|| header.getQdCount() <= 0)
                 return false;
-            }
 
         } catch (BufferUnderflowException e)
         {
@@ -62,13 +60,15 @@ public class Dns implements IFirewall {
         Request request = getRequest(byteBuffer);
 
         if (request == null || request.getHeader().getQdCount() <= 0)
-        {
+
             System.out.println("Invalid DNS");
+
+        for (Request.Query record: request.getQuestions()
+             ) {
+            System.out.println("DNS: -- " + firewall.getBlock().getIpAndPort() + " " + record.getName() + "-" + record.getType());
         }
 
         Request.Query record = request.getQuestions().get(0);
-
-        System.out.println("DNS: -- " + record.getName() + "-" + record.getType());
 
         List<String> table = Firewall.table.matchDns(record.getName(), record.getType());
 

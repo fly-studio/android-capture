@@ -33,6 +33,14 @@ public abstract class Block {
         return null;
     }
 
+    public String getIpAndPort() {
+        return ipAndPort;
+    }
+
+    public Packet getReferencePacket() {
+        return referencePacket;
+    }
+
     public LinkedList<ByteBuffer> getResponse() {
         return firewall.getResponse();
     }

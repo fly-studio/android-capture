@@ -1,5 +1,7 @@
 package org.fly.android.localvpn.store;
 
+import android.util.Log;
+
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.firewall.Firewall;
 import org.fly.protocol.cache.LRUCache;
@@ -14,6 +16,8 @@ import java.util.Map;
  */
 public class UDB extends Block
 {
+    private static final String TAG = UDB.class.getSimpleName();
+
     public DatagramChannel channel;
 
     private static LRUCache<String, UDB> udpCache =
@@ -46,11 +50,13 @@ public class UDB extends Block
         this.ipAndPort = ipAndPort;
         this.channel = channel;
         this.referencePacket = referencePacket;
-        firewall = new Firewall(Packet.IP4Header.TransportProtocol.UDP);
+        firewall = new Firewall(Packet.IP4Header.TransportProtocol.UDP, this);
     }
 
     public static void closeUDB(UDB udb)
     {
+        Log.d(TAG, "Close Connection:" + udb.getIpAndPort());
+
         udb.closeChannel();
 
         synchronized (udpCache)

@@ -152,11 +152,14 @@ public class Dns {
 
     }
 
+    public Dns(ByteBuffer byteBuffer) throws BufferUnderflowException, PtrException
+    {
+        read(byteBuffer);
+    }
+
     public static Dns create(ByteBuffer byteBuffer) throws BufferUnderflowException, PtrException
     {
-        Dns dns = new Dns();
-        dns.read(byteBuffer);
-        return dns;
+        return new Dns(byteBuffer);
     }
 
     public void read(ByteBuffer byteBuffer) throws BufferUnderflowException, PtrException

@@ -4,6 +4,7 @@ import android.util.Log;
 
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.contract.IFirewall;
+import org.fly.android.localvpn.store.Block;
 import org.fly.protocol.cache.ByteBufferPool;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.exception.ResponseException;
@@ -38,10 +39,12 @@ public class Firewall {
     private static Other other = new Other();
     private long count = 0;
     private final Packet.IP4Header.TransportProtocol transportProtocol;
+    private Block block;
 
-    public Firewall(Packet.IP4Header.TransportProtocol transportProtocol) {
+    public Firewall(Packet.IP4Header.TransportProtocol transportProtocol, Block block) {
 
         this.transportProtocol = transportProtocol;
+        this.block = block;
     }
 
     public boolean isAccept() {
@@ -143,6 +146,26 @@ public class Firewall {
             Log.e(TAG,  e.getMessage(), e);
         }
 
+    }
+
+    public static Table getTable() {
+        return table;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public IFirewall getProtocol() {
+        return protocol;
+    }
+
+    public long getCount() {
+        return count;
+    }
+
+    public Block getBlock() {
+        return block;
     }
 }
 

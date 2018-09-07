@@ -29,9 +29,6 @@ import android.view.View;
 import android.widget.Button;
 
 import org.fly.android.localvpn.firewall.Firewall;
-import org.fly.android.localvpn.firewall.Table;
-
-import java.util.regex.Pattern;
 
 
 public class LocalVPN extends Activity
@@ -74,7 +71,6 @@ public class LocalVPN extends Activity
         Firewall.createTable(getResources().getString(R.string.table));
 
         final Button httpButton = findViewById(R.id.okhttp);
-
 
         httpButton.setOnClickListener(new View.OnClickListener()
         {

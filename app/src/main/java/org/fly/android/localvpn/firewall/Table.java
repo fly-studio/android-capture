@@ -90,7 +90,6 @@ public class Table {
 
     private String decodeUrl(String url)
     {
-
         Encryption.AES aes = new Encryption.AES(new byte[]{0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x76, 0x70, 0x6e, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x76, 0x70, 0x6e});
         try {
 
@@ -102,7 +101,7 @@ public class Table {
         return url;
     }
 
-    public void tick()
+    void tick()
     {
         new Thread(new Runnable() {
             @Override

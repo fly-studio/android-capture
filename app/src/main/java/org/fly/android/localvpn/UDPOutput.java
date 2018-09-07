@@ -152,6 +152,8 @@ public class UDPOutput extends UdpIO implements Runnable
         }
         finally
         {
+            Log.d(TAG, "Close all udb");
+
             UDB.closeAll();
         }
     }

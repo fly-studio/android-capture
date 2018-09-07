@@ -4,7 +4,6 @@ import android.util.Log;
 
 import org.apache.commons.codec.binary.StringUtils;
 import org.fly.android.localvpn.contract.IFirewall;
-import org.fly.protocol.cache.ByteBufferPool;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.exception.ResponseException;
 import org.fly.protocol.http.request.Method;
@@ -14,7 +13,6 @@ import org.fly.protocol.http.response.Response;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,18 +70,24 @@ public class Http implements IFirewall {
         // 包体结束, 清除httpRequest等待通道复用
         if (request.isBodyComplete())
         {
-            Log.d(TAG, request.getMethod() + ": " + url);
+            Log.d(TAG, "HTTP -- " + firewall.getBlock().getIpAndPort() + " " + request.getMethod() + ": " + url);
+            Log.d(TAG, request.getHeaderRaw());
 
             if (table != null)
             {
                 table = parse(request, table);
 
-                Response response = Response.newFixedLengthResponse(table);
+                if (table.startsWith("HTTP/1.1 ") && (table.contains("\r\n\r\n") || table.contains("\n\n")))
+                {
+                    results.add(StringUtils.getByteBufferUtf8(table));
+                } else {
+                    Response response = Response.newFixedLengthResponse(table);
 
-                ByteBuffer buffer = ByteBufferPool.acquire();
-                response.send(buffer);
+                    ByteBuffer buffer = ByteBuffer.allocateDirect(table.length() + Request.BUFF_SIZE);
+                    response.send(buffer);
 
-                results.add(buffer);
+                    results.add(buffer);
+                }
             }
 
             request = null;

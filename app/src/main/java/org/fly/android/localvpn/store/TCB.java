@@ -16,6 +16,8 @@
 
 package org.fly.android.localvpn.store;
 
+import android.util.Log;
+
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.firewall.Firewall;
 import org.fly.protocol.cache.LRUCache;
@@ -32,6 +34,8 @@ import java.util.Random;
  */
 public class TCB extends Block
 {
+    private static final String TAG = TCB.class.getSimpleName();
+
     // TCP has more states, but we need only these
     public enum TCBStatus
     {
@@ -115,7 +119,7 @@ public class TCB extends Block
         this.channel = channel;
         this.referencePacket = referencePacket;
 
-        firewall = new Firewall(Packet.IP4Header.TransportProtocol.TCP);
+        firewall = new Firewall(Packet.IP4Header.TransportProtocol.TCP, this);
     }
 
     public void incrementReplyAck(Packet.TCPHeader tcpHeader, int payloadSize)
@@ -149,6 +153,8 @@ public class TCB extends Block
 
     public static void closeTCB(TCB tcb)
     {
+        Log.d(TAG, "Close Connection:" + tcb.getIpAndPort());
+
         tcb.closeChannel();
         synchronized (tcbCache)
         {

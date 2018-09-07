@@ -88,6 +88,11 @@ public class Request {
         return headers;
     }
 
+    public final String getHeaderRaw()
+    {
+        return new String(headerParser.headerBuffer, 0, headerParser.headerEndpoint);
+    }
+
     public final Method getMethod() {
         return method;
     }
@@ -224,7 +229,7 @@ public class Request {
     private class HeaderParser {
 
         byte[] headerBuffer = new byte[BUFF_SIZE];
-        private int headerEndpoint;
+        int headerEndpoint;
         private int rlen = 0;
 
         void update(ByteBuffer byteBuffer) throws IOException, RequestException
