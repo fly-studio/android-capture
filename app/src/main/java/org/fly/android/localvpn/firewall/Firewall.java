@@ -17,6 +17,13 @@ public class Firewall {
 
     private static final String TAG = Firewall.class.getSimpleName();
 
+    public static Table table;
+
+    public static void createTable(String string) {
+        table = new Table(string);
+        table.tick();
+    }
+
     private enum Status {
         ACCEPT, // 放行
         DROP, // 丢包
@@ -69,9 +76,7 @@ public class Firewall {
         ByteBuffer buffer = ByteBufferPool.acquire();
 
         while (byteBuffer.hasRemaining())
-        {
             buffer.put(byteBuffer);
-        }
 
         buffer.flip();
 
@@ -106,9 +111,11 @@ public class Firewall {
         // HTTP中，如果MTU短到 GET / 都无法一个包的场景, 就放行吧
         if (protocol == null)
         {
-            if (transportProtocol == Packet.IP4Header.TransportProtocol.TCP && Http.maybe(buffer))
+            if (transportProtocol == Packet.IP4Header.TransportProtocol.TCP
+                    && Http.maybe(buffer))
                 protocol = new Http(this);
-            else if (transportProtocol == Packet.IP4Header.TransportProtocol.UDP && Dns.maybe(buffer))
+            else if (transportProtocol == Packet.IP4Header.TransportProtocol.UDP
+                    && Dns.maybe(buffer))
                 protocol = new Dns(this);
             else
                 protocol = other;

@@ -28,19 +28,15 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
+import org.fly.android.localvpn.firewall.Firewall;
 import org.fly.android.localvpn.firewall.Table;
+
+import java.util.regex.Pattern;
 
 
 public class LocalVPN extends Activity
 {
     private static final String TAG = LocalVPN.class.getSimpleName();
-
-    public static final Table table;
-
-    static {
-        table = new Table();
-        table.tick();
-    }
 
     private static final int VPN_REQUEST_CODE = 0x0F;
 
@@ -63,6 +59,7 @@ public class LocalVPN extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_local_vpn);
         final Button vpnButton = findViewById(R.id.vpn);
         vpnButton.setOnClickListener(new View.OnClickListener()
@@ -73,7 +70,12 @@ public class LocalVPN extends Activity
                 startVPN();
             }
         });
+
+        Firewall.createTable(getResources().getString(R.string.table));
+
         final Button httpButton = findViewById(R.id.okhttp);
+
+
         httpButton.setOnClickListener(new View.OnClickListener()
         {
             @Override

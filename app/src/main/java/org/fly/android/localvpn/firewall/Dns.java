@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 
 public class Dns implements IFirewall {
 
@@ -62,21 +63,26 @@ public class Dns implements IFirewall {
 
         if (request == null || request.getHeader().getQdCount() <= 0)
         {
-            System.out.println("DNS?????????????????");
+            System.out.println("Invalid DNS");
         }
 
         Request.Query record = request.getQuestions().get(0);
 
         System.out.println("DNS: -- " + record.getName() + "-" + record.getType());
 
-        if (record.isA() && record.getName().equalsIgnoreCase("api2.apk008.com"))
-        {
+        List<String> table = Firewall.table.matchDns(record.getName(), record.getType());
 
+        if (table != null)
+        {
             LinkedList<ByteBuffer> linkedList = new LinkedList<>();
 
             try {
                 ByteBuffer out = ByteBufferPool.acquire();
-                Response response = Response.create(request.getHeader().getId(), record.getName(), "192.168.1.144", 10);
+                Response response = Response.create(request.getHeader().getId(), record.getName(), table.get(0), record.getType(), 10);
+
+                for (int i = 1; i < table.size() ; i++)
+                    response.addAnswer(new org.fly.protocol.dns.content.Dns.Record(record.getName(), record.getType(), table.get(i), 10));
+
                 if (request.getHeader().getRd() > 0)
                 {
                     response.getHeader().setRa(1);

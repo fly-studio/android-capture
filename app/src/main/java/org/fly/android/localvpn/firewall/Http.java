@@ -2,6 +2,7 @@ package org.fly.android.localvpn.firewall;
 
 import android.util.Log;
 
+import org.apache.commons.codec.binary.StringUtils;
 import org.fly.android.localvpn.contract.IFirewall;
 import org.fly.protocol.cache.ByteBufferPool;
 import org.fly.protocol.exception.RequestException;
@@ -15,10 +16,14 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Http implements IFirewall {
 
     private static final String TAG = Http.class.getSimpleName();
+
+    private static final Pattern inputPattern = Pattern.compile("\\$\\{input\\.([a-z0-9_\\.]*)\\}", Pattern.CASE_INSENSITIVE);
 
     private Request request = null;
 
@@ -50,51 +55,62 @@ public class Http implements IFirewall {
         // 依次写入
         request.write(byteBuffer.duplicate());
 
-
-        boolean hijack = false;
-
+        String table = null;
+        String url = null;
         //等待头完成
         if (request.isHeaderComplete())
         {
-            String url = request.getUrl();
+            url = request.getUrl();
+            table = Firewall.table.matchHttp(url, request.getMethod());
 
-            if (url.matches(".*?(xtool\\.23ox\\.cn/api/xtools/x008/status).*?"))
-            {
-                hijack = true;
+            if (table != null)
                 firewall.drop();
-            } else
+            else
                 firewall.accept();
         }
 
         // 包体结束, 清除httpRequest等待通道复用
         if (request.isBodyComplete())
         {
-            String url = request.getUrl();
-
             Log.d(TAG, request.getMethod() + ": " + url);
 
-            if (hijack)
+            if (table != null)
             {
-                String id = request.input("id");
+                table = parse(request, table);
 
-                if (id != null && !id.isEmpty())
-                {
-                    Response response = Response.newFixedLengthResponse("{" +
-                            "\"id\": \"" + id + "\"," +
-                            "\"time\": \"" + (new Date().getTime() + 200 * 365 *  86400_000L) + "\"," +
-                            "\"userName\": \"" + id + "\"," +
-                            "}");
-                    ByteBuffer buffer = ByteBufferPool.acquire();
-                    response.send(buffer);
+                Response response = Response.newFixedLengthResponse(table);
 
-                    results.add(buffer);
-                }
+                ByteBuffer buffer = ByteBufferPool.acquire();
+                response.send(buffer);
 
+                results.add(buffer);
             }
 
             request = null;
         }
 
         return results;
+    }
+
+    private String parse(Request request, String content) {
+
+        if (content.contains("${input."))
+        {
+            Matcher matcher = inputPattern.matcher(content);
+
+            StringBuffer buffer = new StringBuffer();
+            while(matcher.find()){
+                String value = request.input(matcher.group(1));
+                if (value == null) continue;
+
+                matcher.appendReplacement(buffer, value);
+            }
+
+            matcher.appendTail(buffer);
+
+            return buffer.toString();
+        }
+
+        return content;
     }
 }

@@ -10,10 +10,9 @@ public class Request extends Dns {
     public Request(String domain, TYPE type) {
         header.setId(generateId());
         header.setRd(1);
-        header.setQdCount(1);
 
         Query question = new Query(domain, type);
-        questions.add(question);
+        addQuestion(question);
     }
 
     public static Request create(String domain, TYPE type)

@@ -13,14 +13,12 @@ public class Response extends Dns {
         header.setOpcode(OPCODE.QUERY);
         header.setRd(1);
         header.setRcode(RCODE.OK);
-        header.setQdCount(1);
-        header.setAnCount(1);
 
         Query question = new Query(domain, type);
-        questions.add(question);
+        addQuestion(question);
 
         Record answer = new Record(domain, type, value, ttl);
-        answers.add(answer);
+        addAnswer(answer);
     }
 
     public static Response create(int id, String domain, String value, Dns.TYPE type, int ttl)

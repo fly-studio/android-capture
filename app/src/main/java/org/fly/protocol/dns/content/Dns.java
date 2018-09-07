@@ -218,6 +218,28 @@ public class Dns {
         }
     }
 
+    public void addQuestion(Query query)
+    {
+        questions.add(query);
+        header.setQdCount(header.getQdCount() + 1);
+
+    }
+
+    public void addAnswer(Record record) {
+        answers.add(record);
+        header.setAnCount(header.getAnCount() + 1);
+    }
+
+    public void addAuthority(Record record) {
+        answers.add(record);
+        header.setNsCount(header.getNsCount() + 1);
+    }
+
+    public void addAdditional(Record record) {
+        answers.add(record);
+        header.setArCount(header.getArCount() + 1);
+    }
+
     public Header getHeader() {
         return header;
     }
@@ -344,18 +366,34 @@ public class Dns {
             return 1 == tc;
         }
 
+        /**
+         * ID
+         * @return
+         */
         public int getId() {
             return id;
         }
 
+        /**
+         * Query
+         * @return
+         */
         public int getQr() {
             return qr;
         }
 
+        /**
+         * OpCode
+         * @return
+         */
         public OPCODE getOpcode() {
             return opcode;
         }
 
+        /**
+         *
+         * @return
+         */
         public int getTc() {
             return tc;
         }
@@ -376,18 +414,34 @@ public class Dns {
             return rcode;
         }
 
+        /**
+         * Questions count
+         * @return
+         */
         public int getQdCount() {
             return qdCount;
         }
 
+        /**
+         * Answers count
+         * @return
+         */
         public int getAnCount() {
             return anCount;
         }
 
+        /**
+         * Authorities count
+         * @return
+         */
         public int getNsCount() {
             return nsCount;
         }
 
+        /**
+         * Additionals count
+         * @return
+         */
         public int getArCount() {
             return arCount;
         }
@@ -428,18 +482,34 @@ public class Dns {
             this.rcode = rcode;
         }
 
+        /**
+         * Questions count
+         * @return
+         */
         public void setQdCount(int qdCount) {
             this.qdCount = qdCount;
         }
 
+        /**
+         * Answers count
+         * @return
+         */
         public void setAnCount(int anCount) {
             this.anCount = anCount;
         }
 
+        /**
+         * Authorities count
+         * @return
+         */
         public void setNsCount(int nsCount) {
             this.nsCount = nsCount;
         }
 
+        /**
+         * Additionals count
+         * @return
+         */
         public void setArCount(int arCount) {
             this.arCount = arCount;
         }

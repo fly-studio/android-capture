@@ -110,6 +110,10 @@ public class TCPOutput extends TcpIO implements Runnable
         {
             Log.e(TAG, e.toString(), e);
         }
+        catch (Exception e)
+        {
+            Log.e(TAG, e.toString(), e);
+        }
         finally
         {
             TCB.closeAll();

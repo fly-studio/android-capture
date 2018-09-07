@@ -1,18 +1,18 @@
 /*
-** Copyright 2015, Mohamed Naufal
-**
-** Licensed under the Apache License, Version 2.0 (the "License");
-** you may not use this file except in compliance with the License.
-** You may obtain a copy of the License at
-**
-**     http://www.apache.org/licenses/LICENSE-2.0
-**
-** Unless required by applicable law or agreed to in writing, software
-** distributed under the License is distributed on an "AS IS" BASIS,
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-** See the License for the specific language governing permissions and
-** limitations under the License.
-*/
+ ** Copyright 2015, Mohamed Naufal
+ **
+ ** Licensed under the Apache License, Version 2.0 (the "License");
+ ** you may not use this file except in compliance with the License.
+ ** You may obtain a copy of the License at
+ **
+ **     http://www.apache.org/licenses/LICENSE-2.0
+ **
+ ** Unless required by applicable law or agreed to in writing, software
+ ** distributed under the License is distributed on an "AS IS" BASIS,
+ ** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ ** See the License for the specific language governing permissions and
+ ** limitations under the License.
+ */
 
 package org.fly.android.localvpn;
 
@@ -21,8 +21,6 @@ import android.util.Log;
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
 import org.fly.protocol.cache.ByteBufferPool;
-import org.fly.protocol.dns.content.Dns;
-import org.fly.protocol.dns.response.Response;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -76,15 +74,7 @@ public class UDPInput extends UdpIO implements Runnable
                         DatagramChannel inputChannel = (DatagramChannel) key.channel();
                         // XXX: We should handle any IOExceptions here immediately,
                         // but that probably won't happen with UDP
-                        //int readBytes = inputChannel.read(receiveBuffer);
-
-                        ByteBuffer buffer = ByteBufferPool.acquire();
-                        int readBytes = inputChannel.read(buffer);
-                        buffer.flip();
-
-                        receiveBuffer.put(buffer);
-                        ByteBufferPool.release(buffer);
-
+                        int readBytes = inputChannel.read(receiveBuffer);
                         Packet referencePacket = udb.referencePacket;
                         referencePacket.generateUDPBuffer(receiveBuffer, readBytes);
                         receiveBuffer.position(HEADER_SIZE + readBytes);

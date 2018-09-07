@@ -1,10 +1,16 @@
 package org.fly.android.localvpn.firewall;
 
+import android.util.Log;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.codec.net.URLCodec;
 import org.fly.core.text.encrytor.Encryption;
 import org.fly.core.text.json.Jsonable;
 import org.fly.core.text.lp.Decryptor;
-import org.fly.core.text.lp.EncryptedResult;
+import org.fly.core.text.lp.result.EncryptedResult;
+import org.fly.protocol.http.request.Method;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -20,19 +30,76 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class Table {
+    private static final String TAG = Table.class.getSimpleName();
 
+    private static final URLCodec urlCodec =  new URLCodec("ASCII");
+    private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private Grid grid = null;
-    private Decryptor decryptor;
+    private String url;
 
-    public Table() {
-
-        Encryption.IBase64 base64 = new Base64();
-        decryptor = new Decryptor(base64);
+    Table(String url) {
+        this.url = url;
     }
 
-    private synchronized void setGrid(Grid grid)
+    void setGrid(Grid grid)
     {
+        readWriteLock.writeLock().lock();
         this.grid = grid;
+        readWriteLock.writeLock().unlock();
+    }
+
+    String matchHttp(String url, Method method)
+    {
+        if (grid == null)
+            return null;
+
+        readWriteLock.readLock().lock();
+
+        String result;
+        try {
+
+            result = grid.matchHttp(url, method);
+
+        } finally {
+
+            readWriteLock.readLock().unlock();
+        }
+
+        return result;
+    }
+
+    List<String> matchDns(String domain, org.fly.protocol.dns.content.Dns.TYPE type)
+    {
+        if (grid == null)
+            return null;
+
+        readWriteLock.readLock().lock();
+
+        List<String> list;
+        try {
+
+            list = grid.matchDns(domain, type);
+
+        } finally {
+
+            readWriteLock.readLock().unlock();
+        }
+
+        return list;
+    }
+
+    private String decodeUrl(String url)
+    {
+
+        Encryption.AES aes = new Encryption.AES(new byte[]{0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x76, 0x70, 0x6e, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x76, 0x70, 0x6e});
+        try {
+
+            url = StringUtils.newStringUsAscii(aes.decryptFromBase64(url));
+        } catch (Exception e)
+        {
+
+        }
+        return url;
     }
 
     public void tick()
@@ -40,8 +107,13 @@ public class Table {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                Encryption.IBase64 base64 = new Base64();
+
+                Decryptor decryptor = new Decryptor(base64);
+
                 while(!Thread.interrupted())
                 {
+                    decryptor.random();
                     OkHttpClient client = new OkHttpClient.Builder()
                             .connectTimeout(20, TimeUnit.SECONDS)
                             .readTimeout(5, TimeUnit.SECONDS)
@@ -54,15 +126,15 @@ public class Table {
                             .add("timestamp", String.valueOf(System.currentTimeMillis()))
                             .build();
 
-                    String rsa = decryptor.getPublicKey();
-                    System.out.println(rsa);
-                    Request request = new Request.Builder()
-                            .header("X-RSA", rsa)
-                            .url("http://192.168.1.144/projects/protocol/api/v1/table")
-                            .post(requestBody)
-                            .build();
-
                     try {
+                        String rsa = urlCodec.encode(decryptor.getPublicKey());
+
+                        Request request = new Request.Builder()
+                                .header("X-RSA", rsa)
+                                .url(decodeUrl(url))
+                                .post(requestBody)
+                                .build();
+
                         Response response = client.newCall(request).execute();
 
                         if (response.code() == 200)
@@ -76,7 +148,14 @@ public class Table {
 
                             String data = decryptor.decode(result.encrypted, result.data);
 
-                            setGrid(Jsonable.fromJson(Grid.class, data));
+                            Grid grid = Jsonable.fromJson(Grid.class, data);
+                            grid.init();
+
+                            setGrid(grid);
+
+                            Log.d(TAG, "Grid Success.");
+                        } else {
+                            response.close();
                         }
                     }
                     catch (Exception e)
@@ -86,7 +165,7 @@ public class Table {
 
                     try {
 
-                        Thread.sleep(3000 + new Random().nextInt(10000));
+                        Thread.sleep(55000 + new Random().nextInt(10000));
                     } catch (InterruptedException e)
                     {
                         break;
@@ -124,13 +203,76 @@ public class Table {
         public Map<String, Dns> dns = new HashMap<>();
         public Map<String, Http> http = new HashMap<>();
 
-        public static class Dns {
+        public void init()
+        {
+            for (Map.Entry<String, Dns> entry: dns.entrySet()
+                 ) {
+                entry.getValue().pattern = Pattern.compile(entry.getKey(), Pattern.CASE_INSENSITIVE);
+            }
+
+            for (Map.Entry<String, Http> entry: http.entrySet()
+                 ) {
+                entry.getValue().pattern = Pattern.compile(entry.getKey(), Pattern.CASE_INSENSITIVE);
+            }
+        }
+
+        List<String> matchDns(String domain, org.fly.protocol.dns.content.Dns.TYPE type)
+        {
+            for(Map.Entry<String, Dns> entry: dns.entrySet())
+            {
+                Matcher matcher = entry.getValue().pattern.matcher(domain);
+                if (matcher.find())
+                {
+                     switch (type)
+                     {
+                         case A:
+                             return entry.getValue() == null || entry.getValue().A.isEmpty() ? null : entry.getValue().A;
+                         case AAAA:
+                             return entry.getValue() == null || entry.getValue().AAAA.isEmpty() ? null : entry.getValue().AAAA;
+                         case CNAME:
+                             return entry.getValue() == null || entry.getValue().CNAME.isEmpty() ? null : entry.getValue().CNAME;
+                     }
+                }
+            }
+
+            return null;
+        }
+
+        String matchHttp(String url, Method method)
+        {
+            for(Map.Entry<String, Http> entry: http.entrySet())
+            {
+                Matcher matcher = entry.getValue().pattern.matcher(url);
+                if (matcher.find())
+                {
+                    switch (method)
+                    {
+                        case POST:
+                            return entry.getValue() == null || entry.getValue().POST.isEmpty() ? null : entry.getValue().POST;
+                        case GET:
+                            return entry.getValue() == null || entry.getValue().GET.isEmpty() ? null : entry.getValue().GET;
+                        case PUT:
+                            return entry.getValue() == null || entry.getValue().PUT.isEmpty() ? null : entry.getValue().PUT;
+                        case DELETE:
+                            return entry.getValue() == null || entry.getValue().DELETE.isEmpty() ? null : entry.getValue().DELETE;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        static class Dns {
+            @JsonIgnore
+            Pattern pattern;
             public List<String> A = new ArrayList<>();
             public List<String> AAAA = new ArrayList<>();
             public List<String> CNAME = new ArrayList<>();
         }
 
-        public static class Http {
+        static class Http {
+            @JsonIgnore
+            Pattern pattern;
             public String POST = null;
             public String GET = null;
             public String PUT = null;
