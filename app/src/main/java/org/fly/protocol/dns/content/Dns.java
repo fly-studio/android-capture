@@ -1,6 +1,6 @@
 package org.fly.protocol.dns.content;
 
-import org.fly.core.io.BufferUtils;
+import org.fly.core.io.buffer.BufferUtils;
 import org.fly.protocol.exception.PtrException;
 
 import java.net.InetAddress;

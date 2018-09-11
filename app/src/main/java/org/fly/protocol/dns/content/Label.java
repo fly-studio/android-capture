@@ -1,6 +1,6 @@
 package org.fly.protocol.dns.content;
 
-import org.fly.core.io.BufferUtils;
+import org.fly.core.io.buffer.BufferUtils;
 import org.fly.protocol.exception.PtrException;
 
 import java.nio.ByteBuffer;
@@ -51,11 +51,11 @@ public class Label {
                 int ptr = BufferUtils.getUnsignedShort(byteBuffer);
                 ptr = getPtrOffset(ptr);
 
-                int originalOffset = byteBuffer.position();
+                byteBuffer.mark();
 
                 labels = readLabels(ptr);
 
-                byteBuffer.position(originalOffset);
+                byteBuffer.reset();
                 break;
             } else {
                 int len = ch & 0xff;

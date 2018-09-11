@@ -25,7 +25,7 @@ public abstract class Block {
 
         // 允许转发
         if (firewall.isAccept())
-            return firewall.getCache();
+            return firewall.getSession();
             // 丢弃包
         else if (firewall.isDrop())
             firewall.clear();

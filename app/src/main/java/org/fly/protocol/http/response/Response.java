@@ -33,7 +33,7 @@ package org.fly.protocol.http.response;
  * #L%
  */
 
-import org.fly.core.io.IOUtils;
+import org.fly.core.io.IoUtils;
 import org.fly.protocol.exception.ResponseException;
 import org.fly.protocol.http.Constant;
 import org.fly.protocol.http.content.ContentType;
@@ -291,7 +291,7 @@ public class Response implements Closeable {
         pw.flush();
         sendBodyWithCorrectTransferAndEncoding(outputStream, pending);
         outputStream.flush();
-        IOUtils.safeClose(this.data);
+        IoUtils.safeClose(this.data);
 
     }
 

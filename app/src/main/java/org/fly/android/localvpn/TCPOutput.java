@@ -22,7 +22,7 @@ import org.fly.android.localvpn.Packet.TCPHeader;
 import org.fly.android.localvpn.contract.TcpIO;
 import org.fly.android.localvpn.store.TCB;
 import org.fly.android.localvpn.store.TCB.TCBStatus;
-import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.net.InetAddress;

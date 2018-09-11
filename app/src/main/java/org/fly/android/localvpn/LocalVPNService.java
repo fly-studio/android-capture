@@ -23,7 +23,7 @@ import android.os.ParcelFileDescriptor;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.Closeable;
 import java.io.FileDescriptor;

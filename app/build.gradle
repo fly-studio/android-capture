@@ -25,3 +25,8 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.10.0'
     implementation project(":core")
 }
+
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}

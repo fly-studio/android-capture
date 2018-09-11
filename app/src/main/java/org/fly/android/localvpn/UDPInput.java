@@ -20,7 +20,7 @@ import android.util.Log;
 
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
-import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.protocol.dns.content.Dns;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class UDPInput extends UdpIO implements Runnable
                 int readyChannels = selector.select();
 
                 if (readyChannels == 0) {
-                    Thread.sleep(10);
+                    Thread.sleep(5);
                     continue;
                 }
 

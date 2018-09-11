@@ -31,9 +31,9 @@ public class Http implements IFirewall {
         this.firewall = firewall;
     }
 
-    public static boolean maybe(ByteBuffer byteBuffer)
+    public static boolean maybe(ByteBuffer readableBuffer)
     {
-        String str = StandardCharsets.US_ASCII.decode(byteBuffer.duplicate()).toString();
+        String str = StandardCharsets.US_ASCII.decode(readableBuffer.duplicate()).toString();
         if (!str.contains(" "))
             return false;
 
@@ -44,14 +44,14 @@ public class Http implements IFirewall {
     }
 
     @Override
-    public LinkedList<ByteBuffer> write(ByteBuffer byteBuffer) throws IOException, RequestException, ResponseException {
+    public LinkedList<ByteBuffer> write(ByteBuffer readableBuffer) throws IOException, RequestException, ResponseException {
         if (null == request)
             request = new Request();
 
         LinkedList<ByteBuffer> results = new LinkedList<>();
 
         // 依次写入
-        request.write(byteBuffer.duplicate());
+        request.write(readableBuffer.duplicate());
 
         String table = null;
         String url = null;
@@ -59,7 +59,7 @@ public class Http implements IFirewall {
         if (request.isHeaderComplete())
         {
             url = request.getUrl();
-            table = Firewall.table.matchHttp(url, request.getMethod());
+            table = Firewall.getFilter().matchHttp(url, request.getMethod());
 
             if (table != null)
                 firewall.drop();

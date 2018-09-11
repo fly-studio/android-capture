@@ -8,5 +8,5 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
 public interface IFirewall {
-    LinkedList<ByteBuffer> write(ByteBuffer byteBuffer) throws IOException, RequestException, ResponseException;
+    LinkedList<ByteBuffer> write(ByteBuffer readableBuffer) throws IOException, RequestException, ResponseException;
 }

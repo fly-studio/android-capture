@@ -1,7 +1,7 @@
 package org.fly.android.localvpn.firewall;
 
 import org.fly.android.localvpn.contract.IFirewall;
-import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.protocol.dns.request.Request;
 import org.fly.protocol.dns.response.Response;
 import org.fly.protocol.exception.RequestException;
@@ -35,13 +35,13 @@ public class Dns implements IFirewall {
         return request;
     }
 
-    public static boolean maybe(ByteBuffer byteBuffer)
+    public static boolean maybe(ByteBuffer readableBuffer)
     {
         Request.Header header = new Request.Header();
 
         try
         {
-            header.read(byteBuffer.duplicate());
+            header.read(readableBuffer.duplicate());
 
             if (!header.isQuery() /*|| !header.isQueryDomain() */|| header.getQdCount() <= 0)
                 return false;
@@ -51,13 +51,13 @@ public class Dns implements IFirewall {
             return false;
         }
 
-        return getRequest(byteBuffer.duplicate()) != null;
+        return getRequest(readableBuffer.duplicate()) != null;
     }
 
     @Override
-    public LinkedList<ByteBuffer> write(ByteBuffer byteBuffer) throws IOException, RequestException, ResponseException {
+    public LinkedList<ByteBuffer> write(ByteBuffer readableBuffer) throws IOException, RequestException, ResponseException {
 
-        Request request = getRequest(byteBuffer);
+        Request request = getRequest(readableBuffer);
 
         if (request == null || request.getHeader().getQdCount() <= 0)
 
@@ -70,7 +70,7 @@ public class Dns implements IFirewall {
 
         Request.Query record = request.getQuestions().get(0);
 
-        List<String> table = Firewall.table.matchDns(record.getName(), record.getType());
+        List<String> table = Firewall.getFilter().matchDns(record.getName(), record.getType());
 
         if (table != null)
         {

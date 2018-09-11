@@ -33,7 +33,7 @@ package org.fly.protocol.http.tempfiles;
  * #L%
  */
 
-import org.fly.core.io.IOUtils;
+import org.fly.core.io.IoUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -61,7 +61,7 @@ public class DefaultTempFile implements ITempFile {
 
     @Override
     public void delete() throws Exception {
-        IOUtils.safeClose(this.fstream);
+        IoUtils.safeClose(this.fstream);
         if (!this.file.delete()) {
             throw new Exception("could not delete temporary file: " + this.file.getAbsolutePath());
         }

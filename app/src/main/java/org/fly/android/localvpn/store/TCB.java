@@ -20,7 +20,7 @@ import android.util.Log;
 
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.firewall.Firewall;
-import org.fly.protocol.cache.LRUCache;
+import org.fly.core.cache.LRUCache;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;

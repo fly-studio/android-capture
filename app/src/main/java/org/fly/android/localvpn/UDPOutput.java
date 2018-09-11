@@ -20,7 +20,7 @@ import android.util.Log;
 
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
-import org.fly.protocol.cache.ByteBufferPool;
+import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.net.InetAddress;

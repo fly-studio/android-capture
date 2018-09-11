@@ -1,8 +1,8 @@
 package org.fly.protocol.http.request;
 
-import org.fly.core.io.IOUtils;
+import org.fly.core.io.IoUtils;
+import org.fly.core.io.buffer.IoBuffer;
 import org.fly.core.text.HttpUtils;
-import org.fly.protocol.cache.ByteBufferPool;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.http.Constant;
 import org.fly.protocol.http.content.ContentType;
@@ -72,16 +72,13 @@ public class Request {
 
     private String protocolVersion;
 
-    private ByteBuffer cache;
+    private IoBuffer session = IoBuffer.newInstance();
 
     private HeaderParser headerParser;
     private BodyParser bodyParser = null;
 
-    private boolean writeMode = true;
-
     public Request() {
         headerParser = new HeaderParser();
-        cache = ByteBuffer.allocate(BUFF_SIZE);
     }
 
     public final Map<String, String> getHeaders() {
@@ -143,75 +140,26 @@ public class Request {
         return headerParser.isComplete() ? headerParser.getBodySize() : -1;
     }
 
-    public void write(ByteBuffer byteBuffer) throws RequestException, IOException
+    public void write(ByteBuffer readableBuffer) throws RequestException, IOException
     {
-        append(byteBuffer);
+        session.compact();
+        session.add(readableBuffer.duplicate());
 
-        execute(byteBuffer);
+        execute(readableBuffer);
     }
 
-    private void append(ByteBuffer byteBuffer)
+    private void execute(ByteBuffer readableBuffer) throws RequestException, IOException
     {
-        if (!writeMode)
-            flush();
-
-        cache.put(byteBuffer.duplicate());
-
-        writeMode = true;
-    }
-
-    private void prepend(ByteBuffer byteBuffer)
-    {
-        flip();
-
-        ByteBuffer buffer = null;
-        if (cache.hasRemaining())
-        {
-            buffer = ByteBufferPool.acquire();
-            buffer.put(cache);
-        }
-
-        cache.clear();
-        writeMode = true;
-
-        if (byteBuffer != null)
-            cache.put(byteBuffer.duplicate());
-
-        if (buffer != null) {
-            cache.put(buffer);
-
-            ByteBufferPool.release(buffer);
-        }
-    }
-
-    private void flip()
-    {
-        if (writeMode)
-            cache.flip();
-
-        writeMode = false;
-    }
-
-    private void flush()
-    {
-        prepend(null);
-    }
-
-
-    private void execute(ByteBuffer byteBuffer) throws RequestException, IOException
-    {
-        flip();
+        session.flip();
 
         if (!isHeaderComplete())
         {
-            headerParser.update(byteBuffer);
+            headerParser.update();
 
             if (headerParser.isComplete())
                 bodyParser = new BodyParser(headerParser.getBodySize());
 
         }
-
-        flip();
 
         if (isHeaderComplete() && !isBodyComplete())
         {
@@ -232,13 +180,13 @@ public class Request {
         int headerEndpoint;
         private int rlen = 0;
 
-        void update(ByteBuffer byteBuffer) throws IOException, RequestException
+        void update() throws IOException, RequestException
         {
-            while(cache.hasRemaining() && BUFF_SIZE - rlen > 0)
+            while(session.hasRemaining() && BUFF_SIZE - rlen > 0)
             {
-                int s = Math.min(BUFF_SIZE - rlen, cache.remaining());
+                int s = Math.min(BUFF_SIZE - rlen, session.remaining());
 
-                cache.get(headerBuffer, rlen, s);
+                session.get(headerBuffer, rlen, s);
                 rlen += s;
             }
 
@@ -251,19 +199,17 @@ public class Request {
             // at once!
 
             if (rlen >= BUFF_SIZE && headerEndpoint == 0)
-                throw new RequestException("Header size limit " + IOUtils.getFileSize(BUFF_SIZE));
+                throw new RequestException("Header size limit " + IoUtils.getFileSize(BUFF_SIZE));
 
             // Header Complete
             if (isComplete()) {
 
-                // 多余部分是Body，回写到流开头
+                // 多余部分是Body，重新设置流position
                 if (headerEndpoint < rlen) {
 
-                    ByteBuffer buffer = byteBuffer.duplicate();
-                    buffer.position(buffer.limit() - rlen + headerEndpoint);
-                    rlen = headerEndpoint;
+                    session.position(session.position() - rlen + headerEndpoint);
 
-                    prepend(buffer);
+                    rlen = headerEndpoint;
                 }
 
                 parseHeader();
@@ -426,12 +372,12 @@ public class Request {
         void update() throws IOException, RequestException
         {
             // Read all the body and write it to request_data_output
-            while(cache.hasRemaining() && size > 0)
+            while(session.hasRemaining() && size > 0)
             {
                 byte[] buf = new byte[REQUEST_BUFFER_LEN];
 
-                int rlen = (int) Math.min(Math.min(size, REQUEST_BUFFER_LEN), cache.remaining());
-                cache.get(buf, 0, rlen);
+                int rlen = (int) Math.min(Math.min(size, REQUEST_BUFFER_LEN), session.remaining());
+                session.get(buf, 0, rlen);
                 size -= rlen;
                 if (rlen > 0) {
                     requestDataOutput.write(buf, 0, rlen);
@@ -491,7 +437,7 @@ public class Request {
                     files.put("content", saveTmpFile(fbuf, 0, fbuf.limit(), null));
                 }
             } finally {
-                IOUtils.safeClose(randomAccessFile);
+                IoUtils.safeClose(randomAccessFile);
             }
         }
 
@@ -633,7 +579,7 @@ public class Request {
                 } finally {
                     try
                     {
-                        IOUtils.safeClose(fileOutputStream);
+                        IoUtils.safeClose(fileOutputStream);
                     }catch (Exception e)
                     {
 
@@ -716,7 +662,7 @@ public class Request {
         }
         response.setKeepAlive(keepAlive);
         response.send(outputStream);
-        IOUtils.safeClose(outputStream);
+        IoUtils.safeClose(outputStream);
 
         if (!keepAlive || response.isCloseConnection()) {
             throw new SocketException("Http Shutdown");

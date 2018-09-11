@@ -68,7 +68,7 @@ public class LocalVPN extends Activity
             }
         });
 
-        Firewall.createTable(getResources().getString(R.string.table));
+        Firewall.createTable(getResources().getString(R.string.table), Integer.valueOf(getResources().getString(R.string.probably)));
 
         final Button httpButton = findViewById(R.id.okhttp);
 
