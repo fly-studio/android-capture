@@ -1,6 +1,7 @@
 package org.fly.protocol.http.request;
 
 import org.fly.core.io.IoUtils;
+import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.core.io.buffer.IoBuffer;
 import org.fly.core.text.HttpUtils;
 import org.fly.protocol.exception.RequestException;
@@ -72,7 +73,7 @@ public class Request {
 
     private String protocolVersion;
 
-    private IoBuffer session = IoBuffer.newInstance();
+    private IoBuffer session = IoBuffer.allocateDirect(ByteBufferPool.BUFFER_SIZE);
 
     private HeaderParser headerParser;
     private BodyParser bodyParser = null;
@@ -143,12 +144,18 @@ public class Request {
     public void write(ByteBuffer readableBuffer) throws RequestException, IOException
     {
         session.compact();
-        session.add(readableBuffer.duplicate());
 
-        execute(readableBuffer);
+        int delta = (int)Math.ceil(readableBuffer.remaining() / session.remaining()) - 1;
+
+        if (delta > 0)
+            session.extend(delta * ByteBufferPool.BUFFER_SIZE);
+
+        session.put(readableBuffer.duplicate());
+
+        execute();
     }
 
-    private void execute(ByteBuffer readableBuffer) throws RequestException, IOException
+    private void execute() throws RequestException, IOException
     {
         session.flip();
 
@@ -158,7 +165,6 @@ public class Request {
 
             if (headerParser.isComplete())
                 bodyParser = new BodyParser(headerParser.getBodySize());
-
         }
 
         if (isHeaderComplete() && !isBodyComplete())
@@ -180,7 +186,7 @@ public class Request {
         int headerEndpoint;
         private int rlen = 0;
 
-        void update() throws IOException, RequestException
+        void update() throws RequestException
         {
             while(session.hasRemaining() && BUFF_SIZE - rlen > 0)
             {

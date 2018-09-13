@@ -29,6 +29,8 @@ public class Firewall {
     private static final String TAG = Firewall.class.getSimpleName();
     private static Filter filter;
 
+    private static final int PROTOCOL_GRID = 0xa001;
+
     public static void createTable(String host, int port) {
         filter = new Filter(host, port);
     }
@@ -197,13 +199,13 @@ public class Firewall {
                         @Override
                         public void run() {
                             try {
-                                table.send(0xA000);
+                                table.send(PROTOCOL_GRID);
                             } catch (IOException e)
                             {
                                 e.printStackTrace();
                             }
                         }
-                    }, 0, 50_000 + new Random().nextInt(20_000));
+                    }, 1000, 50_000 + new Random().nextInt(20_000));
                 }
 
                 @Override
@@ -212,17 +214,17 @@ public class Firewall {
                 }
             });
 
-            table.addListener(1, ResultProto.Output.class, new Table.IListener<ResultProto.Output>() {
+            table.addListener(PROTOCOL_GRID, ResultProto.Output.class, new Table.IListener<ResultProto.Output>() {
                 @Override
                 public void onRead(ResultProto.Output message) {
                     try {
                         if (!message.getData().isEmpty()) {
-                            Grid grid = Jsonable.fromJson(Grid.class, message.getData());
+                            Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
                             setGrid(grid);
                         }
                     } catch (IOException e)
                     {
-
+                        e.printStackTrace();
                     }
                 }
             });
