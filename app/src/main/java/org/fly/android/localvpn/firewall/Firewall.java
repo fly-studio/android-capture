@@ -179,61 +179,87 @@ public class Firewall {
 
     static class Filter {
         private Table table;
+        private Table.Connection connection;
         private Grid grid;
         private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+        private Timer timer;
 
         Filter(String host, int port) {
-            table = new Table(host, port);
-            table.connect();
+            table = new Table();
 
-            table.setConnectionListener(new Table.IConnectionListener() {
-                private Timer timer;
-
+            connect(Table.decodeString(host), port);
+            timer = new Timer();
+            long intval = 10_000 + new Random().nextInt(20_000);
+            timer.schedule(new TimerTask() {
                 @Override
-                public void onConnected() {
-                    if (null != timer)
-                        return;
-
-                    timer = new Timer();
-                    timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            try {
-                                table.send(PROTOCOL_GRID);
-                            } catch (IOException e)
-                            {
-                                e.printStackTrace();
-                            }
-                        }
-                    }, 1000, 50_000 + new Random().nextInt(20_000));
+                public void run() {
+                    if (null != connection)
+                        connection.send(PROTOCOL_GRID);
                 }
+            }, intval, intval);
+        }
 
-                @Override
-                public void onDisconnected(Throwable e) {
-                    Log.e(TAG, "Can not connect to Table.", e);
-                }
-            });
+        private void reconnect(final String host, final int port)
+        {
+            try {
 
-            table.addListener(PROTOCOL_GRID, ResultProto.Output.class, new Table.IListener<ResultProto.Output>() {
-                @Override
-                public void onRead(ResultProto.Output message) {
-                    try {
-                        if (!message.getData().isEmpty()) {
-                            Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
-                            setGrid(grid);
-                        }
-                    } catch (IOException e)
-                    {
-                        e.printStackTrace();
+                Thread.sleep(5_000);
+            } catch (InterruptedException e)
+            {
+
+            }
+
+            connect(host, port);
+        }
+
+        private void connect(final String host, final int port)
+        {
+            try
+            {
+                connection = table.connect(host, port);
+
+                connection.send(PROTOCOL_GRID);
+                connection.setConnectionListener(new Table.IConnectionListener() {
+
+                    @Override
+                    public void onConnected() {
+
                     }
-                }
-            });
+
+                    @Override
+                    public void onDisconnected(Throwable e) {
+                        Log.e(TAG, "disconnect to Table.", e);
+                        reconnect(host, port);
+                    }
+                });
+
+                connection.addListener(PROTOCOL_GRID, ResultProto.Output.class, new Table.IListener<ResultProto.Output>() {
+                    @Override
+                    public void onRead(ResultProto.Output message) {
+                        try {
+                            if (!message.getData().isEmpty()) {
+                                Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
+                                setGrid(grid);
+                            }
+                        } catch (IOException e)
+                        {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
+            } catch (IOException e)
+            {
+                Log.e(TAG, "can not connect to Table.", e);
+                reconnect(host, port);
+            }
         }
 
         void setGrid(Grid grid)
         {
             readWriteLock.writeLock().lock();
             this.grid = grid;
+            grid.init();
             readWriteLock.writeLock().unlock();
         }
 
@@ -244,17 +270,19 @@ public class Firewall {
 
             readWriteLock.readLock().lock();
 
-            String result;
             try {
+                String result;
 
                 result = grid.matchHttp(url, method);
+                return result;
 
+            } catch (Exception e) {
+                e.printStackTrace();
             } finally {
-
                 readWriteLock.readLock().unlock();
             }
 
-            return result;
+            return null;
         }
 
         public List<String> matchDns(String domain, org.fly.protocol.dns.content.Dns.TYPE type)
@@ -264,17 +292,21 @@ public class Firewall {
 
             readWriteLock.readLock().lock();
 
-            List<String> list;
             try {
+                List<String> list;
 
                 list = grid.matchDns(domain, type);
+                return list;
 
-            } finally {
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally
+            {
 
                 readWriteLock.readLock().unlock();
             }
 
-            return list;
+            return null;
         }
     }
 }

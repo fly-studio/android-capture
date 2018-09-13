@@ -147,6 +147,7 @@ public class TCPOutput extends TcpIO implements Runnable
                 outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
 
                 //由于上面是异步的, 不可能这么快返回连接成功, 连接成功会触发selector的事件驱动
+                //但是本地连接会快速的返回
                 if (outputChannel.finishConnect())
                 {
                     tcb.status = TCBStatus.SYN_RECEIVED;

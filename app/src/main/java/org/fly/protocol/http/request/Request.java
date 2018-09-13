@@ -143,22 +143,27 @@ public class Request {
 
     public void write(ByteBuffer readableBuffer) throws RequestException, IOException
     {
-        session.compact();
+        //turn read to write
+        //第一次是0，需要判断
+        if (session.position() != 0)
+            session.compact();
 
-        int delta = (int)Math.ceil(readableBuffer.remaining() / session.remaining()) - 1;
+        if (readableBuffer.remaining() > session.remaining()) {
+            int delta = (int) Math.ceil((double)readableBuffer.remaining() / (double)session.capacity());
 
-        if (delta > 0)
-            session.extend(delta * ByteBufferPool.BUFFER_SIZE);
+            if (delta > 0)
+                session.extend(delta * ByteBufferPool.BUFFER_SIZE);
+        }
 
         session.put(readableBuffer.duplicate());
+
+        session.flip();
 
         execute();
     }
 
     private void execute() throws RequestException, IOException
     {
-        session.flip();
-
         if (!isHeaderComplete())
         {
             headerParser.update();
