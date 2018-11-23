@@ -137,8 +137,10 @@ public class TCB extends Block
     {
         mySequenceNum += size;
 
-        if (mySequenceNum > 0xffffffffL) // 2 ** 32 - 1
-            mySequenceNum %= 0x100000000L; // 2 ** 32
+        mySequenceNum = mySequenceNum & 0xffffffffL;
+
+        /*if (mySequenceNum > 0xffffffffL) // 2 ** 32 - 1
+            mySequenceNum %= 0x100000000L; // 2 ** 32*/
     }
 
     public int getRemainSeq()

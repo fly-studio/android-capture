@@ -223,7 +223,7 @@ public class Firewall {
 
                     @Override
                     public void onConnected() {
-
+                        Log.i(TAG, "Connected to Table.");
                     }
 
                     @Override

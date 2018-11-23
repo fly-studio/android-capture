@@ -272,7 +272,7 @@ public class TCPOutput extends TcpIO implements Runnable
                 return;
             }
 
-            // 空ACK 可以不用轉發給remote， 因為空ACK是手机和VPN的通讯，VPN->Remote的通讯依赖于channel
+            // 空ACK 可以不用轉發給remote， 因為空ACK是手机和VPN的确认包，理论上需要验证seq，VPN->Remote的通讯依赖于channel
             if (payloadSize == 0) return; // Empty ACK, ignore
 
             // 給selector 添加一個OP_READ監聽狀態
