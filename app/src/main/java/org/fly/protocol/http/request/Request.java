@@ -1,5 +1,8 @@
 package org.fly.protocol.http.request;
 
+import android.util.Log;
+
+import org.apache.commons.codec.binary.StringUtils;
 import org.fly.core.io.IoUtils;
 import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.core.io.buffer.IoBuffer;
@@ -29,6 +32,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -419,6 +423,9 @@ public class Request {
                     fbuf = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, 0, randomAccessFile.length());
                     randomAccessFile.seek(0);
                 }
+
+                Log.d(TAG, StandardCharsets.UTF_8.decode(fbuf).toString());
+                fbuf.position(0);
 
                 // If the method is POST, there may be parameters
                 // in data section, too, read it:
