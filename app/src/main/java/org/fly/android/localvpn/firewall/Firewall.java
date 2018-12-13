@@ -190,7 +190,7 @@ public class Firewall {
         Filter(String host, int port) {
             table = new Table();
 
-            connect(Table.decodeString(host), port);
+            connection = connect(Table.decodeString(host), port);
             timer = new Timer();
             long intval = 10_000 + new Random().nextInt(20_000);
             timer.schedule(new TimerTask() {
@@ -204,71 +204,69 @@ public class Firewall {
             }, 100, intval);
         }
 
-        private void reconnect(final String host, final int port)
+        private void reconnect()
         {
             try {
 
-                Thread.sleep(5_000);
+                Thread.sleep(1_000);
             } catch (InterruptedException e)
             {
 
             }
 
-            connect(host, port);
+            table.reconnect(connection);
         }
 
-        private void connect(final String host, final int port)
+        private Connection connect(final String host, final int port)
         {
-            try
-            {
-                connection = table.connect(host, port);
-                connection.registerProtocolParser(PROTOCOL_GRID, ResultProto.Output.class);
 
-                //connection.send(new Request.Builder().setProtocol(PROTOCOL_GRID).build());
-                connection.setConnectionListener(new Table.IConnectionListener() {
+            connection = table.buildConnection(host, port);
 
-                    @Override
-                    public void onConnected() {
-                        Log.i(TAG, "Connected to Table.");
-                    }
+            connection.setConnectionListener(new Table.IConnectionListener() {
 
-                    @Override
-                    public void onDisconnected(Throwable e) {
-                        Log.e(TAG, "disconnect to Table.", e);
-                        reconnect(host, port);
-                    }
-                });
+                @Override
+                public void onConnected() {
+                    Log.i(TAG, "Connected to Table.");
+                }
 
-                connection.listen(PROTOCOL_GRID, new Table.IListener() {
-                    @Override
-                    public void onSuccess(Response response) {
-                        try {
-                            if (response.getMessage() != null)
-                            {
-                                ResultProto.Output message = (ResultProto.Output)response.getMessage();
-                                if (!message.getData().isEmpty()) {
-                                    Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
-                                    setGrid(grid);
-                                }
-                            }
+                @Override
+                public void onDisconnected(Throwable e) {
+                    Log.e(TAG, "disconnect to Table.", e);
+                    reconnect();
+                }
 
-                        } catch (IOException e)
+                @Override
+                public void onError(Throwable e) {
+                    reconnect();
+                }
+            });
+
+            connection.listen(PROTOCOL_GRID, new Table.IListener() {
+                @Override
+                public void onResponse(Response response) {
+                    try {
+                        ResultProto.Output message = response.getMessage(ResultProto.Output.class);
+                        if (message != null)
                         {
-                            e.printStackTrace();
+                            if (!message.getData().isEmpty()) {
+                                Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
+                                setGrid(grid);
+                            }
                         }
-                    }
 
-                    @Override
-                    public void onFail(Request request, Throwable e) {
-                        Log.e(TAG, e.getMessage(), e);
+                    } catch (IOException e)
+                    {
+                        e.printStackTrace();
                     }
-                });
+                }
 
-            } catch (IOException e)
-            {
-                Log.e(TAG, "can not connect to Table.", e);
-                reconnect(host, port);
-            }
+                @Override
+                public void onFail(Request request, Throwable e) {
+                    Log.e(TAG, e.getMessage(), e);
+                }
+            });
+
+            return connection;
         }
 
         void setGrid(Grid grid)
@@ -318,7 +316,6 @@ public class Firewall {
                 e.printStackTrace();
             } finally
             {
-
                 readWriteLock.readLock().unlock();
             }
 
