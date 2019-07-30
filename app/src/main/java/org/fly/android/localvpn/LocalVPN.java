@@ -21,6 +21,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.AssetManager;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
@@ -30,10 +31,18 @@ import android.widget.Button;
 
 import org.fly.android.localvpn.firewall.Firewall;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
 
 public class LocalVPN extends Activity
 {
     private static final String TAG = LocalVPN.class.getSimpleName();
+
+    public static final int BUFFER_SIZE = 16384;
 
     private static final int VPN_REQUEST_CODE = 0x0F;
 
@@ -52,6 +61,37 @@ public class LocalVPN extends Activity
         }
     };
 
+    public static String readAssetFile(AssetManager mgr, String path) {
+        String contents = "";
+        InputStream is = null;
+        BufferedReader reader = null;
+        try {
+            is = mgr.open(path);
+            reader = new BufferedReader(new InputStreamReader(is));
+            contents = reader.readLine();
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                contents += '\n' + line;
+            }
+        } catch (final Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException ignored) {
+                }
+            }
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+        return contents;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -68,7 +108,8 @@ public class LocalVPN extends Activity
             }
         });
 
-        Firewall.createTable(getResources().getString(R.string.table), Integer.valueOf(getResources().getString(R.string.probably)));
+
+        Firewall.createTable(readAssetFile(getAssets(), "grid.json"));
 
         final Button httpButton = findViewById(R.id.okhttp);
 

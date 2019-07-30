@@ -20,7 +20,6 @@ import android.util.Log;
 
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
-import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.protocol.dns.content.Dns;
 
 import java.io.IOException;
@@ -68,14 +67,14 @@ public class UDPInput extends UdpIO implements Runnable
                     {
                         keyIterator.remove();
 
-                        ByteBuffer receiveBuffer = ByteBufferPool.acquire();
+                        ByteBuffer receiveBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
                         // Leave space for the header
                         receiveBuffer.position(HEADER_SIZE);
 
                         DatagramChannel inputChannel = (DatagramChannel) key.channel();
                         // XXX: We should handle any IOExceptions here immediately,
                         // but that probably won't happen with UDP
-                        ByteBuffer buffer = ByteBufferPool.acquire();
+                        ByteBuffer buffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
                         int readBytes = inputChannel.read(buffer);
                         buffer.flip();
 

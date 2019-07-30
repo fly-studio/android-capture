@@ -1,8 +1,8 @@
 package org.fly.android.localvpn.contract;
 
+import org.fly.android.localvpn.LocalVPN;
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.store.TCB;
-import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,7 +47,7 @@ public abstract class TcpIO {
         //按照MTU分割
         while ((readBytes = Math.min(replyBuffer.remaining(), Packet.MUTE_SIZE - HEADER_SIZE)) > 0)
         {
-            ByteBuffer segmentBuffer = ByteBufferPool.acquire();
+            ByteBuffer segmentBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
 
             segmentBuffer.position(HEADER_SIZE);
 

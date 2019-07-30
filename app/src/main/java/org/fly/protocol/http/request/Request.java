@@ -3,10 +3,12 @@ package org.fly.protocol.http.request;
 import android.util.Log;
 
 import org.apache.commons.codec.binary.StringUtils;
-import org.fly.core.io.IoUtils;
-import org.fly.core.io.buffer.ByteBufferPool;
-import org.fly.core.io.buffer.IoBuffer;
-import org.fly.core.text.HttpUtils;
+
+
+import org.fly.android.localvpn.LocalVPN;
+import org.fly.android.localvpn.structs.HttpUtils;
+import org.fly.android.localvpn.structs.IoBuffer;
+import org.fly.android.localvpn.structs.IoUtils;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.http.Constant;
 import org.fly.protocol.http.content.ContentType;
@@ -77,7 +79,7 @@ public class Request {
 
     private String protocolVersion;
 
-    private IoBuffer session = IoBuffer.allocateDirect(ByteBufferPool.BUFFER_SIZE);
+    private IoBuffer session = IoBuffer.allocateDirect(LocalVPN.BUFFER_SIZE);
 
     private HeaderParser headerParser;
     private BodyParser bodyParser = null;
@@ -156,7 +158,7 @@ public class Request {
             int delta = (int) Math.ceil((double)readableBuffer.remaining() / (double)session.capacity());
 
             if (delta > 0)
-                session.extend(delta * ByteBufferPool.BUFFER_SIZE);
+                session.extend(delta * LocalVPN.BUFFER_SIZE);
         }
 
         session.put(readableBuffer.duplicate());

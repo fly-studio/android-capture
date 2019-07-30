@@ -20,7 +20,6 @@ import android.util.Log;
 
 import org.fly.android.localvpn.contract.UdpIO;
 import org.fly.android.localvpn.store.UDB;
-import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -96,7 +95,7 @@ public class UDPOutput extends UdpIO implements Runnable
 
                         UDB.closeUDB(udb);
 
-                        ByteBufferPool.release(currentPacket.backingBuffer);
+                        //currentPacket.backingBuffer.clear();
                         continue;
                     }
                     outputChannel.configureBlocking(false);
@@ -128,7 +127,7 @@ public class UDPOutput extends UdpIO implements Runnable
                     UDB.closeUDB(udb);
                 }
 
-                ByteBufferPool.release(currentPacket.backingBuffer);
+                //currentPacket.backingBuffer.clear();
 
                 // response before send to remote
                 LinkedList<ByteBuffer> byteBuffers = udb.getResponse();

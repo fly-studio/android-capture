@@ -3,7 +3,6 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 28
 
-
     defaultConfig {
         applicationId "org.fly.android.localvpn"
         minSdkVersion 19
@@ -17,13 +16,17 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0-rc02'
-    implementation 'com.squareup.okhttp3:okhttp:3.10.0'
-    implementation project(":core")
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version:'2.9.9'
+    implementation group: 'commons-codec', name: 'commons-codec', version: '1.12'
+
+
 }
 
 

@@ -21,7 +21,6 @@ import android.util.Log;
 import org.fly.android.localvpn.contract.TcpIO;
 import org.fly.android.localvpn.store.TCB;
 import org.fly.android.localvpn.store.TCB.TCBStatus;
-import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -97,7 +96,7 @@ public class TCPInput extends TcpIO implements Runnable
                 tcb.status = TCBStatus.SYN_RECEIVED;
 
                 // TODO: Set MSS for receiving larger packets from the device
-                ByteBuffer responseBuffer = ByteBufferPool.acquire();
+                ByteBuffer responseBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
                 referencePacket.generateTCPBuffer(responseBuffer, (byte) (Packet.TCPHeader.SYN | Packet.TCPHeader.ACK),
                         tcb, 0);
                 outputQueue.offer(responseBuffer);
@@ -110,7 +109,7 @@ public class TCPInput extends TcpIO implements Runnable
         catch (IOException e)
         {
             Log.e(TAG, "Connection error: " + tcb.ipAndPort, e);
-            ByteBuffer responseBuffer = ByteBufferPool.acquire();
+            ByteBuffer responseBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
             referencePacket.generateTCPBuffer(responseBuffer, (byte) Packet.TCPHeader.RST, 0, tcb.myAcknowledgementNum, 0);
             outputQueue.offer(responseBuffer);
             TCB.closeTCB(tcb);
@@ -120,7 +119,7 @@ public class TCPInput extends TcpIO implements Runnable
     private void processInput(SelectionKey key, Iterator<SelectionKey> keyIterator)
     {
         keyIterator.remove();
-        ByteBuffer receiveBuffer = ByteBufferPool.acquire();
+        ByteBuffer receiveBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
         // Leave space for the header
         receiveBuffer.position(HEADER_SIZE);
 
@@ -151,7 +150,7 @@ public class TCPInput extends TcpIO implements Runnable
 
                 if (tcb.status != TCBStatus.CLOSE_WAIT)
                 {
-                    ByteBufferPool.release(receiveBuffer);
+                    //receiveBuffer.clear();
                     return;
                 }
 

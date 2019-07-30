@@ -23,8 +23,6 @@ import android.os.ParcelFileDescriptor;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import org.fly.core.io.buffer.ByteBufferPool;
-
 import java.io.Closeable;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -140,7 +138,6 @@ public class LocalVPNService extends VpnService
         deviceToNetworkTCPQueue = null;
         deviceToNetworkUDPQueue = null;
         networkToDeviceQueue = null;
-        ByteBufferPool.clear();
         closeResources(udpSelector, tcpSelector, vpnInterface);
     }
 
@@ -212,7 +209,7 @@ public class LocalVPNService extends VpnService
                 while (!Thread.interrupted())
                 {
                     if (dataSent)
-                        bufferToNetwork = ByteBufferPool.acquire();
+                        bufferToNetwork = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
                     else
                         bufferToNetwork.clear();
 
@@ -253,7 +250,7 @@ public class LocalVPNService extends VpnService
 
                         dataReceived = true;
 
-                        ByteBufferPool.release(bufferFromNetwork);
+                        //bufferFromNetwork.clear();
                     }
                     else
                     {

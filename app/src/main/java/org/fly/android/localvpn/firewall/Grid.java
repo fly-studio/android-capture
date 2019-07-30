@@ -2,7 +2,7 @@ package org.fly.android.localvpn.firewall;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import org.fly.core.text.json.Jsonable;
+import org.fly.android.localvpn.structs.Jacksonable;
 import org.fly.protocol.http.request.Method;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class Grid extends Jsonable {
+class Grid extends Jacksonable {
 
     public Map<String, Dns> dns = new HashMap<>();
     public Map<String, Http> http = new HashMap<>();

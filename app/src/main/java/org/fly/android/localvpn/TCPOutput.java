@@ -22,7 +22,6 @@ import org.fly.android.localvpn.Packet.TCPHeader;
 import org.fly.android.localvpn.contract.TcpIO;
 import org.fly.android.localvpn.store.TCB;
 import org.fly.android.localvpn.store.TCB.TCBStatus;
-import org.fly.core.io.buffer.ByteBufferPool;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -73,7 +72,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
                 ByteBuffer payloadBuffer = currentPacket.backingBuffer;
                 currentPacket.backingBuffer = null;
-                ByteBuffer responseBuffer = ByteBufferPool.acquire();
+                ByteBuffer responseBuffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
 
                 InetAddress destinationAddress = currentPacket.ip4Header.destinationAddress;
 
@@ -96,10 +95,10 @@ public class TCPOutput extends TcpIO implements Runnable
                     processACK(tcb, tcpHeader, payloadBuffer, responseBuffer);
 
                 // XXX: cleanup later
-                if (responseBuffer.position() == 0)
-                    ByteBufferPool.release(responseBuffer);
-
-                ByteBufferPool.release(payloadBuffer);
+                if (responseBuffer.position() == 0) {
+                    //responseBuffer.clear();
+                }
+                //payloadBuffer.clear();
             }
         }
         catch (InterruptedException e)
@@ -334,7 +333,7 @@ public class TCPOutput extends TcpIO implements Runnable
 
     private void closeCleanly(TCB tcb, ByteBuffer buffer)
     {
-        ByteBufferPool.release(buffer);
+        //buffer.clear();
 
         TCB.closeTCB(tcb);
     }

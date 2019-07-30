@@ -4,7 +4,7 @@ import android.util.Log;
 
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.firewall.Firewall;
-import org.fly.core.cache.LRUCache;
+import org.fly.android.localvpn.structs.LRUCache;
 
 import java.io.IOException;
 import java.nio.channels.DatagramChannel;

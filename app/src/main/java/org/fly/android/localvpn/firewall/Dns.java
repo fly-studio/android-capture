@@ -1,7 +1,7 @@
 package org.fly.android.localvpn.firewall;
 
+import org.fly.android.localvpn.LocalVPN;
 import org.fly.android.localvpn.contract.IFirewall;
-import org.fly.core.io.buffer.ByteBufferPool;
 import org.fly.protocol.dns.request.Request;
 import org.fly.protocol.dns.response.Response;
 import org.fly.protocol.exception.RequestException;
@@ -77,7 +77,7 @@ public class Dns implements IFirewall {
             LinkedList<ByteBuffer> linkedList = new LinkedList<>();
 
             try {
-                ByteBuffer out = ByteBufferPool.acquire();
+                ByteBuffer out = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
                 Response response = Response.create(request.getHeader().getId(), record.getName(), table.get(0), record.getType(), 10);
 
                 for (int i = 1; i < table.size() ; i++)

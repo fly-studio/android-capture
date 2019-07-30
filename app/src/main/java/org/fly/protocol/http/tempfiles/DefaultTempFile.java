@@ -33,7 +33,7 @@ package org.fly.protocol.http.tempfiles;
  * #L%
  */
 
-import org.fly.core.io.IoUtils;
+import org.fly.android.localvpn.structs.IoUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;

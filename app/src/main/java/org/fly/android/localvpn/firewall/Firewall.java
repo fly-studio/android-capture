@@ -2,28 +2,21 @@ package org.fly.android.localvpn.firewall;
 
 import android.util.Log;
 
+import org.fly.android.localvpn.LocalVPN;
 import org.fly.android.localvpn.Packet;
 import org.fly.android.localvpn.contract.IFirewall;
 import org.fly.android.localvpn.store.Block;
-import org.fly.core.io.buffer.ByteBufferPool;
-import org.fly.core.text.json.Jsonable;
-import org.fly.core.text.lp.result.ResultProto;
-import org.fly.core.text.lp.table.Connection;
-import org.fly.core.text.lp.table.Request;
-import org.fly.core.text.lp.table.Response;
-import org.fly.core.text.lp.table.Table;
 import org.fly.protocol.exception.RequestException;
 import org.fly.protocol.exception.ResponseException;
 import org.fly.protocol.http.request.Method;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -34,8 +27,8 @@ public class Firewall {
 
     private static final int PROTOCOL_GRID = 0xa101;
 
-    public static void createTable(String host, int port) {
-        filter = new Filter(host, port);
+    public static void createTable(String config) {
+        filter = new Filter(config);
     }
 
     private enum Status {
@@ -79,8 +72,9 @@ public class Firewall {
     public void clear()
     {
         ByteBuffer buffer;
-        while((buffer = session.poll()) != null)
-            ByteBufferPool.release(buffer);
+        while((buffer = session.poll()) != null) {
+            //buffer.clear();
+        }
 
         session.clear();
     }
@@ -89,7 +83,7 @@ public class Firewall {
 
         ++count;
 
-        ByteBuffer buffer = ByteBufferPool.acquire();
+        ByteBuffer buffer = ByteBuffer.allocate(LocalVPN.BUFFER_SIZE);
 
         while (byteBuffer.hasRemaining())
             buffer.put(byteBuffer);
@@ -181,92 +175,19 @@ public class Firewall {
     }
 
     static class Filter {
-        private Table table;
-        private Connection connection;
         private Grid grid;
         private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
         private Timer timer;
 
-        Filter(String host, int port) {
-            table = new Table();
-
-            connection = connect(Table.decodeString(host), port);
-            timer = new Timer();
-            long intval = 10_000 + new Random().nextInt(20_000);
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (null != connection)
-                        connection.send(new Request.Builder()
-                                .setProtocol(PROTOCOL_GRID)
-                                .build());
-                }
-            }, 100, intval);
-        }
-
-        private void reconnect()
-        {
+        public Filter(String config) {
             try {
-
-                Thread.sleep(1_000);
-            } catch (InterruptedException e)
+                Grid grid = Grid.fromJson(Grid.class, config);
+                setGrid(grid);
+            } catch (IOException e)
             {
-
+                Log.e(TAG, e.toString(), e);
             }
 
-            table.reconnect(connection);
-        }
-
-        private Connection connect(final String host, final int port)
-        {
-
-            connection = table.buildConnection(host, port);
-
-            connection.setConnectionListener(new Table.IConnectionListener() {
-
-                @Override
-                public void onConnected() {
-                    Log.i(TAG, "Connected to Table.");
-                }
-
-                @Override
-                public void onDisconnected(Throwable e) {
-                    Log.e(TAG, "disconnect to Table.", e);
-                    reconnect();
-                }
-
-                @Override
-                public void onError(Throwable e) {
-                    reconnect();
-                }
-            });
-
-            connection.listen(PROTOCOL_GRID, new Table.IListener() {
-                @Override
-                public void onResponse(Response response) {
-                    try {
-                        ResultProto.Output message = response.getMessage(ResultProto.Output.class);
-                        if (message != null)
-                        {
-                            if (!message.getData().isEmpty()) {
-                                Grid grid = Jsonable.fromJson(Grid.class, message.getData().toByteArray());
-                                setGrid(grid);
-                            }
-                        }
-
-                    } catch (IOException e)
-                    {
-                        e.printStackTrace();
-                    }
-                }
-
-                @Override
-                public void onFail(Request request, Throwable e) {
-                    Log.e(TAG, e.getMessage(), e);
-                }
-            });
-
-            return connection;
         }
 
         void setGrid(Grid grid)

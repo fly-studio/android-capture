@@ -1,0 +1,19 @@
+{
+  "dns": {
+    /*"neverssl.com": {
+      "A": [
+        "127.0.0.1"
+        "IP2"
+      ]
+      "AAAA": [
+        "ipv6"
+      ]
+    }*/
+  },
+  "http": {
+    ".*?neverssl.com/online.*?": {
+      "GET": "Inject Result",
+      //"POST": "Result",
+    }
+  }
+}
